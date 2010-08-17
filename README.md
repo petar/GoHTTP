@@ -7,7 +7,7 @@ main Google Go library.
 
 To install, simply run
 
-	goinstall `github.com/petar/GoHTTP/http`
+	goinstall github.com/petar/GoHTTP/http
 
 ## About
 
