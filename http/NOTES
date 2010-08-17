@@ -1,0 +1,16 @@
+
+transfer-coding
+content-coding
+
+media-type (type/subtype)
+	default charset = ISO-8859-1
+	multipart type, MUST boundary parameter
+
+	multipart/byteranges in HTTP 206 response, treated specially in terms of caching
+	multipart/(unrecognized) treat as multipart/mixed
+
+	multipart/form-data specifically for POST request
+
+
+accept parsing, verify response against request accepts
+
