@@ -7,7 +7,6 @@ package http
 import (
 	"bytes"
 	"reflect"
-	"regexp"
 	"strings"
 	"testing"
 )
@@ -108,7 +107,7 @@ func TestPostContentTypeParsing(t *testing.T) {
 		req := &Request{
 			Method: "POST",
 			Header: test.contentType,
-			Body:   nopCloser{bytes.NewBufferString("body")},
+			Body:   NopCloser{bytes.NewBufferString("body")},
 		}
 		err := req.ParseForm()
 		if !test.error && err != nil {
@@ -124,7 +123,7 @@ func TestMultipartReader(t *testing.T) {
 	req := &Request{
 		Method: "POST",
 		Header: stringMap{"Content-Type": `multipart/form-data; boundary="foo123"`},
-		Body:   nopCloser{new(bytes.Buffer)},
+		Body:   NopCloser{new(bytes.Buffer)},
 	}
 	multipart, err := req.MultipartReader()
 	if multipart == nil {
@@ -140,16 +139,15 @@ func TestMultipartReader(t *testing.T) {
 
 func TestRedirect(t *testing.T) {
 	const (
-		start = "http://google.com/"
-		endRe = "^http://www\\.google\\.[a-z.]+/$"
+		start = "http://codesearch.google.com/"
+		end   = "http://www.google.com/codesearch"
 	)
-	var end = regexp.MustCompile(endRe)
 	r, url, err := Get(start)
 	if err != nil {
 		t.Fatal(err)
 	}
 	r.Body.Close()
-	if r.StatusCode != 200 || !end.MatchString(url) {
-		t.Fatalf("Get(%s) got status %d at %q, want 200 matching %q", start, r.StatusCode, url, endRe)
+	if r.StatusCode != 200 || url != end {
+		t.Fatalf("Get(%s) got status %d at %s, want 200 at %s", start, r.StatusCode, url, end)
 	}
 }

@@ -4,16 +4,24 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=http
+TARG=github.com/petar/GoHTTP/http
 GOFILES=\
+	abridge.go\
+	aclient.go\
+	aclientconn.go\
+	aserver.go\
+	aserverconn.go\
+	boiler.go\
 	chunked.go\
 	client.go\
 	dump.go\
+	fdlimiter.go\
 	fs.go\
 	lex.go\
 	persist.go\
 	request.go\
 	response.go\
+	roc.go\
 	server.go\
 	status.go\
 	transfer.go\

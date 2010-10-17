@@ -71,7 +71,7 @@ type Request struct {
 	ProtoMajor int    // 1
 	ProtoMinor int    // 0
 
-	// A header maps request lines to their values.
+	// A header is a mapping of request lines to their values.
 	// If the header says
 	//
 	//	accept-encoding: gzip, deflate
@@ -191,7 +191,7 @@ func (req *Request) Write(w io.Writer) os.Error {
 
 	uri := req.RawURL
 	if uri == "" {
-		uri = valueOrDefault(urlEscape(req.URL.Path, encodePath), "/")
+		uri = valueOrDefault(urlEscape(req.URL.Path, false), "/")
 		if req.URL.RawQuery != "" {
 			uri += "?" + req.URL.RawQuery
 		}
@@ -249,8 +249,6 @@ func readLineBytes(b *bufio.Reader) (p []byte, err os.Error) {
 		// If the caller asked for a line, there should be a line.
 		if err == os.EOF {
 			err = io.ErrUnexpectedEOF
-		} else if err == bufio.ErrBufferFull {
-			err = ErrLineTooLong
 		}
 		return nil, err
 	}
@@ -384,30 +382,29 @@ func parseHTTPVersion(vers string) (int, int, bool) {
 	return major, minor, true
 }
 
+var cmap = make(map[string]string)
+
 // CanonicalHeaderKey returns the canonical format of the
 // HTTP header key s.  The canonicalization converts the first
 // letter and any letter following a hyphen to upper case;
 // the rest are converted to lowercase.  For example, the
 // canonical key for "accept-encoding" is "Accept-Encoding".
 func CanonicalHeaderKey(s string) string {
+	if t, ok := cmap[s]; ok {
+		return t
+	}
+
 	// canonicalize: first letter upper case
 	// and upper case after each dash.
 	// (Host, User-Agent, If-Modified-Since).
 	// HTTP headers are ASCII only, so no Unicode issues.
-	var a []byte
+	a := []byte(s)
 	upper := true
-	for i := 0; i < len(s); i++ {
-		v := s[i]
+	for i, v := range a {
 		if upper && 'a' <= v && v <= 'z' {
-			if a == nil {
-				a = []byte(s)
-			}
 			a[i] = v + 'A' - 'a'
 		}
 		if !upper && 'A' <= v && v <= 'Z' {
-			if a == nil {
-				a = []byte(s)
-			}
 			a[i] = v + 'a' - 'A'
 		}
 		upper = false
@@ -415,10 +412,9 @@ func CanonicalHeaderKey(s string) string {
 			upper = true
 		}
 	}
-	if a != nil {
-		return string(a)
-	}
-	return s
+	t := string(a)
+	cmap[s] = t
+	return t
 }
 
 type chunkedReader struct {
@@ -679,15 +675,4 @@ func (r *Request) FormValue(key string) string {
 func (r *Request) expectsContinue() bool {
 	expectation, ok := r.Header["Expect"]
 	return ok && strings.ToLower(expectation) == "100-continue"
-}
-
-func (r *Request) wantsHttp10KeepAlive() bool {
-	if r.ProtoMajor != 1 || r.ProtoMinor != 0 {
-		return false
-	}
-	value, exists := r.Header["Connection"]
-	if !exists {
-		return false
-	}
-	return strings.Index(strings.ToLower(value), "keep-alive") != -1
 }

@@ -44,13 +44,6 @@ var lexTests = []lexTest{
 	},
 }
 
-func min(x, y int) int {
-	if x <= y {
-		return x
-	}
-	return y
-}
-
 func TestSplitFieldValue(t *testing.T) {
 	for k, l := range lexTests {
 		parsed, result := httpSplitFieldValue(l.Raw)
