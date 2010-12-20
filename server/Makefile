@@ -4,19 +4,9 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=github.com/petar/GoHTTP/http
+TARG=github.com/petar/GoHTTP/server
 GOFILES=\
-	chunked.go\
-	client.go\
-	dump.go\
-	fs.go\
-	lex.go\
-	persist.go\
-	request.go\
-	response.go\
+	query.go\
 	server.go\
-	status.go\
-	transfer.go\
-	url.go\
 
 include $(GOROOT)/src/Make.pkg

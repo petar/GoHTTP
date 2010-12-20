@@ -20,8 +20,9 @@ QUOTED_GOBIN=$(subst $(space),\ ,$(GOBIN))
 all: install
 
 DIRS=\
+     	util\
 	http\
-	http/pprof\
+	server\
 
 TEST=\
 	$(filter-out $(NOTEST),$(DIRS))

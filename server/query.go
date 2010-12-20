@@ -1,0 +1,82 @@
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package server
+
+import (
+	"os"
+	. "github.com/petar/GoHTTP/http"
+)
+
+// Incoming requests are presented to the user as a Query object.
+// Query allows users to response to a request and to hijack the
+// underlying ServerConn, which is typically needed for CONNECT
+// requests.
+type Query struct {
+	srv      *Server
+	ssc      *stampedServerConn
+	req      *Request
+	err      os.Error
+	fwd      bool
+	hijacked bool
+}
+
+func newQueryErr(err os.Error) *Query {
+	return &Query{nil, nil, nil, err, false, false}
+}
+
+
+func (q *Query) getError() os.Error { return q.err }
+
+// GetRequest() returns the underlying request. The result
+// is never nil.
+func (q *Query) GetRequest() *Request { return q.req }
+
+// Continue() indicates to the Server that it can continue
+// listening for incoming requests on the ServerConn that
+// delivered the request underlying this Query object.
+// For every query returned by Server.Read(), the user must
+// call either Continue() or Hijack(), but not both, exactly once.
+func (q *Query) Continue() {
+	if q.fwd {
+		panic("query, continue/hijack")
+	}
+	q.fwd = true
+	go q.srv.read(q.ssc)
+}
+
+// Hijack() instructs the Server to stop managing the ServerConn
+// that delivered the request underlying this Query. The connection is returned
+// and the user becomes responsible for it.
+// For every query returned by Server.Read(), the user must
+// call either Continue() or Hijack(), but not both, and only once.
+func (q *Query) Hijack() *ServerConn {
+	if q.fwd {
+		panic("continue and hijack")
+	}
+	q.fwd = true
+	q.hijacked = true
+	srv := q.srv
+	q.srv = nil
+	ssc := q.ssc
+	q.ssc = nil
+	srv.unregister(ssc)
+	return ssc.ServerConn
+}
+
+// Write sends resp back on the connection that produced the request.
+// Any non-nil error returned pertains to the ServerConn and not
+// to the Server as a whole.
+func (q *Query) Write(resp *Response) (err os.Error) {
+	req := q.req
+	q.req = nil
+	err = q.ssc.Write(req, resp)
+	if err != nil {
+		q.srv.bury(q.ssc)
+		q.ssc = nil
+		q.srv = nil
+		return
+	}
+	return
+}
