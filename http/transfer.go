@@ -108,7 +108,7 @@ func (t *transferWriter) WriteHeader(w io.Writer) (err os.Error) {
 		// writing long headers, using HTTP line splitting
 		io.WriteString(w, "Trailer: ")
 		needComma := false
-		for k, _ := range t.Trailer {
+		for k := range t.Trailer {
 			k = CanonicalHeaderKey(k)
 			switch k {
 			case "Transfer-Encoding", "Trailer", "Content-Length":
@@ -184,6 +184,7 @@ func readTransfer(msg interface{}, r *bufio.Reader) (err os.Error) {
 		t.RequestMethod = rr.RequestMethod
 		t.ProtoMajor = rr.ProtoMajor
 		t.ProtoMinor = rr.ProtoMinor
+		t.Close = shouldClose(t.ProtoMajor, t.ProtoMinor, t.Header)
 	case *Request:
 		t.Header = rr.Header
 		t.ProtoMajor = rr.ProtoMajor
@@ -209,9 +210,6 @@ func readTransfer(msg interface{}, r *bufio.Reader) (err os.Error) {
 	if err != nil {
 		return err
 	}
-
-	// Closing
-	t.Close = shouldClose(t.ProtoMajor, t.ProtoMinor, t.Header)
 
 	// Trailer
 	t.Trailer, err = fixTrailer(t.Header, t.TransferEncoding)
@@ -342,7 +340,7 @@ func fixLength(status int, requestMethod string, header map[string]string, te []
 	// Logic based on media type. The purpose of the following code is just
 	// to detect whether the unsupported "multipart/byteranges" is being
 	// used. A proper Content-Type parser is needed in the future.
-	if strings.Index(strings.ToLower(header["Content-Type"]), "multipart/byteranges") >= 0 {
+	if strings.Contains(strings.ToLower(header["Content-Type"]), "multipart/byteranges") {
 		return -1, ErrNotSupported
 	}
 
@@ -362,7 +360,7 @@ func shouldClose(major, minor int, header map[string]string) bool {
 			return true
 		}
 		v = strings.ToLower(v)
-		if strings.Index(v, "keep-alive") == -1 {
+		if !strings.Contains(v, "keep-alive") {
 			return true
 		}
 		return false

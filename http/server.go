@@ -225,6 +225,7 @@ func (w *response) WriteHeader(code int) {
 		// Must not have body.
 		w.header["Content-Type"] = "", false
 		w.header["Transfer-Encoding"] = "", false
+		w.chunking = false
 	}
 	if !w.req.ProtoAtLeast(1, 0) {
 		return
@@ -316,9 +317,9 @@ func errorKludge(w *response) {
 	// Is it a broken browser?
 	var msg string
 	switch agent := w.req.UserAgent; {
-	case strings.Index(agent, "MSIE") >= 0:
+	case strings.Contains(agent, "MSIE"):
 		msg = "Internet Explorer"
-	case strings.Index(agent, "Chrome/") >= 0:
+	case strings.Contains(agent, "Chrome/"):
 		msg = "Chrome"
 	default:
 		return
@@ -361,6 +362,7 @@ func (w *response) finishRequest() {
 		io.WriteString(w.conn.buf, "\r\n")
 	}
 	w.conn.buf.Flush()
+	w.req.Body.Close()
 }
 
 // Flush implements the ResponseWriter.Flush method.

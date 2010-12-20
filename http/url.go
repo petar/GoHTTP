@@ -439,7 +439,7 @@ func ParseURL(rawurl string) (url *URL, err os.Error) {
 		// instead.  Clients that wish to use RawAuthority will have to
 		// interpret it themselves: RFC 2396 does not define the meaning.
 
-		if strings.Index(rawHost, "%") >= 0 {
+		if strings.Contains(rawHost, "%") {
 			// Host cannot contain escaped characters.
 			err = os.ErrorString("hexadecimal escape in host")
 			goto Error
@@ -514,4 +514,16 @@ func (url *URL) String() string {
 		result += "#" + urlEscape(url.Fragment, encodeFragment)
 	}
 	return result
+}
+
+// EncodeQuery encodes the query represented as a multimap.
+func EncodeQuery(m map[string][]string) string {
+	parts := make([]string, 0, len(m)) // will be large enough for most uses
+	for k, vs := range m {
+		prefix := URLEscape(k) + "="
+		for _, v := range vs {
+			parts = append(parts, prefix+URLEscape(v))
+		}
+	}
+	return strings.Join(parts, "&")
 }
