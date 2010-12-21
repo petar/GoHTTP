@@ -356,3 +356,13 @@ func (cc *ClientConn) Read(req *Request) (resp *Response, err os.Error) {
 	}
 	return
 }
+
+// Fetch is convenience method that writes a request and reads a response.
+func (cc *ClientConn) Fetch(req *Request) (resp *Response, err os.Error) {
+	err = cc.Write(req)
+	if err != nil {
+		return
+	}
+	resp, err = cc.Read(req)
+	return
+}
