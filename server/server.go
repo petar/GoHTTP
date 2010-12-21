@@ -215,7 +215,7 @@ func (srv *Server) unregister(ssc *stampedServerConn) {
 
 func (srv *Server) bury(ssc *stampedServerConn) {
 	srv.unregister(ssc)
-	c, _, _ := ssc.Close()
+	c, _ := ssc.Close()
 	if c != nil {
 		c.Close()
 	}
@@ -237,7 +237,7 @@ func (srv *Server) Shutdown() (err os.Error) {
 	// Then, force-close all open connections
 	srv.lk.Lock()
 	for ssc, _ := range srv.conns {
-		c, _, _ := ssc.Close()
+		c, _ := ssc.Close()
 		if c != nil {
 			c.Close()
 		}

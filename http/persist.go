@@ -9,11 +9,15 @@ import (
 	"container/list"
 	"io"
 	"net"
+	"net/textproto"
 	"os"
 	"sync"
 )
 
-var ErrPersistEOF = &ProtocolError{"persistent connection closed"}
+var (
+	ErrPersistEOF = &ProtocolError{"persistent connection closed"}
+	ErrPipeline   = &ProtocolError{"pipeline error"}
+)
 
 // A ServerConn reads requests and sends responses over an underlying
 // connection, until the HTTP keepalive logic commands an end. ServerConn
@@ -28,6 +32,8 @@ type ServerConn struct {
 	re, we          os.Error // read/write errors
 	lastBody        io.ReadCloser
 	nread, nwritten int
+	pipe            textproto.Pipeline
+	pipeIDs         map[*Request]uint
 	lk              sync.Mutex // protected read/write to re,we
 }
 
@@ -37,7 +43,7 @@ func NewServerConn(c net.Conn, r *bufio.Reader) *ServerConn {
 	if r == nil {
 		r = bufio.NewReader(c)
 	}
-	return &ServerConn{c: c, r: r}
+	return &ServerConn{c: c, r: r, pipeIDs: make(map[*Request]uint)}
 }
 
 // Close detaches the ServerConn and returns the underlying connection as well
@@ -57,9 +63,24 @@ func (sc *ServerConn) Close() (c net.Conn, r *bufio.Reader) {
 // Read returns the next request on the wire. An ErrPersistEOF is returned if
 // it is gracefully determined that there are no more requests (e.g. after the
 // first request on an HTTP/1.0 connection, or after a Connection:close on a
-// HTTP/1.1 connection). Read can be called concurrently with Write, but not
-// with another Read.
+// HTTP/1.1 connection).
 func (sc *ServerConn) Read() (req *Request, err os.Error) {
+
+	// Ensure ordered execution of Read's and Write's
+	id := sc.pipe.Next()
+	sc.pipe.StartRequest(id)
+	defer func() {
+		sc.pipe.EndRequest(id)
+		if req == nil {
+			sc.pipe.StartResponse(id)
+			sc.pipe.EndResponse(id)
+		} else {
+			// Remember the pipeline id of this request
+			sc.lk.Lock()
+			sc.pipeIDs[req] = id
+			sc.lk.Unlock()
+		}
+	}()
 
 	sc.lk.Lock()
 	if sc.we != nil { // no point receiving if write-side broken or closed
@@ -121,11 +142,26 @@ func (sc *ServerConn) Pending() int {
 	return sc.nread - sc.nwritten
 }
 
-// Write writes a repsonse. To close the connection gracefully, set the
+// Write writes resp in response to req. To close the connection gracefully, set the
 // Response.Close field to true. Write should be considered operational until
 // it returns an error, regardless of any errors returned on the Read side.
-// Write can be called concurrently with Read, but not with another Write.
-func (sc *ServerConn) Write(resp *Response) os.Error {
+func (sc *ServerConn) Write(req *Request, resp *Response) os.Error {
+
+	// Retrieve the pipeline ID of this request/response pair
+	sc.lk.Lock()
+	id, ok := sc.pipeIDs[req]
+	sc.pipeIDs[req] = 0, false
+	if !ok {
+		sc.lk.Unlock()
+		return ErrPipeline
+	}
+	sc.lk.Unlock()
+
+	// Ensure pipeline order
+	sc.pipe.StartResponse(id)
+	defer func() {
+		sc.pipe.EndResponse(id)
+	}()
 
 	sc.lk.Lock()
 	if sc.we != nil {
