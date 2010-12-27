@@ -87,6 +87,14 @@ func NewServer(l net.Listener, tmo int64, fdlim int) *Server {
 	return srv
 }
 
+func NewServerEasy(addr string) (*Server, os.Error) {
+	l, err := net.Listen("tcp", addr)
+	if err != nil {
+		return nil, err
+	}
+	return NewServer(l, 5e9, 200), nil
+}
+
 func (srv *Server) GetFDLimiter() *FDLimiter { return &srv.fdl }
 
 func (srv *Server) expireLoop() {

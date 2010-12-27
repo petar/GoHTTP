@@ -40,7 +40,7 @@ func (q *Query) GetRequest() *Request { return q.req }
 // call either Continue() or Hijack(), but not both, exactly once.
 func (q *Query) Continue() {
 	if q.fwd {
-		panic("query, continue/hijack")
+		panic("continue/hijack")
 	}
 	q.fwd = true
 	go q.srv.read(q.ssc)

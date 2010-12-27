@@ -18,5 +18,7 @@ GOFILES=\
 	status.go\
 	transfer.go\
 	url.go\
+	petar-util.go\
+	petar-boiler.go\
 
 include $(GOROOT)/src/Make.pkg
