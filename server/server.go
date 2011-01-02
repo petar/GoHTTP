@@ -9,6 +9,8 @@ import (
 	"container/list"
 	"net"
 	"os"
+	"path"
+	"strings"
 	"sync"
 	"time"
 	. "github.com/petar/GoHTTP/http"
@@ -27,6 +29,7 @@ type Server struct {
 	qch    chan *Query
 	fdl    FDLimiter
 	lk     sync.Mutex
+	config Config // Server configuration
 }
 
 type stampedServerConn struct {
@@ -93,6 +96,12 @@ func NewServerEasy(addr string) (*Server, os.Error) {
 		return nil, err
 	}
 	return NewServer(l, 5e9, 200), nil
+}
+
+func (srv *Server) SetStatic(urlPrefix, localPath string) os.Error {
+	srv.config.StaticURL = urlPrefix
+	srv.config.StaticPath = localPath
+	return nil
 }
 
 func (srv *Server) GetFDLimiter() *FDLimiter { return &srv.fdl }
@@ -167,17 +176,41 @@ func (srv *Server) acceptLoop() {
 // and the user us expected to call Shutdown(), perhaps after serving
 // outstanding queries.
 func (srv *Server) Read() (query *Query, err os.Error) {
-	q := <-srv.qch
-	srv.lk.Lock()
-	if closed(srv.qch) {
+	for {
+		q := <-srv.qch
+		srv.lk.Lock()
+		if closed(srv.qch) {
+			srv.lk.Unlock()
+			return nil, os.EBADF
+		}
 		srv.lk.Unlock()
-		return nil, os.EBADF
+		if err = q.getError(); err != nil {
+			return nil, err
+		}
+		q = srv.dispatch(q)
+		if q != nil {
+			return q, nil
+		}
 	}
-	srv.lk.Unlock()
-	if err = q.getError(); err != nil {
-		return nil, err
+	panic("unreach")
+}
+
+func (srv *Server) dispatch(q *Query) *Query {
+	req := q.GetRequest()
+	if req.Method != "GET" {
+		return q
 	}
-	return q, nil
+	p := q.GetPath()
+	surl := srv.config.StaticURL 
+	if surl == "" || !strings.HasPrefix(p, surl) {
+		return q
+	}
+	p = p[len(surl):]
+	full := path.Join(srv.config.StaticPath, p)
+	resp, _ := NewResponseFile(full)
+	q.Write(resp)
+	q.Continue()
+	return nil
 }
 
 func (srv *Server) read(ssc *stampedServerConn) {

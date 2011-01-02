@@ -68,3 +68,23 @@ func NewResponse400() *Response {
 		Close:         false,
 	}
 }
+
+func NewResponse404() *Response {
+	html := "<html>" +
+		"<head><title>404 Not found</title></head>\n" +
+		"<body bgcolor=\"white\">\n" +
+		"<center><h1>404 Not found</h1></center>\n" +
+		"<hr><center>Go HTTP package</center>\n" +
+		"</body></html>"
+	return &Response{
+		Status:        "Not found",
+		StatusCode:    404,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		RequestMethod: "GET",
+		Body:          NewBodyString(html),
+		ContentLength: int64(len(html)),
+		Close:         false,
+	}
+}

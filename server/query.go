@@ -6,6 +6,7 @@ package server
 
 import (
 	"os"
+	"path"
 	. "github.com/petar/GoHTTP/http"
 )
 
@@ -32,6 +33,10 @@ func (q *Query) getError() os.Error { return q.err }
 // GetRequest() returns the underlying request. The result
 // is never nil.
 func (q *Query) GetRequest() *Request { return q.req }
+
+func (q *Query) GetPath() string { 
+	return path.Clean(q.req.URL.Path)
+}
 
 // Continue() indicates to the Server that it can continue
 // listening for incoming requests on the ServerConn that

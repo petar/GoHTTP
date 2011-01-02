@@ -1,9 +1,13 @@
+// Copyright 2009 The Go Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
 
 package http
 
 import (
 	"bytes"
 	"io"
+	"io/ioutil"
 	"os"
 )
 
@@ -21,6 +25,26 @@ func (NopCloser) Close() os.Error { return nil }
 func NewBodyString(s string) io.ReadCloser {
 	b := bytes.NewBufferString(s)
 	return NopCloser{b}
+}
+
+func NewBodyFile(filename string) (io.ReadCloser, os.Error) {
+	f, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+	return NopCloser{bytes.NewBuffer(f)}, nil
+}
+
+func NewResponseFile(filename string) (*Response, os.Error) {
+	b,err := NewBodyFile(filename)
+	if err != nil {
+		return NewResponse404(), err
+	}
+	r := NewResponse200()
+	r.Body = b
+	r.TransferEncoding = []string{"chunked"}
+	r.ContentLength = -1
+	return r, nil
 }
 
 // DupResp returns a replica of resp and any error encountered

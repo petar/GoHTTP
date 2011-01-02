@@ -6,6 +6,7 @@ include $(GOROOT)/src/Make.inc
 
 TARG=github.com/petar/GoHTTP/server
 GOFILES=\
+	config.go\
 	query.go\
 	server.go\
 
