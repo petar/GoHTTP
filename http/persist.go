@@ -65,7 +65,7 @@ func (sc *ServerConn) Close() (c net.Conn, r *bufio.Reader) {
 // HTTP/1.1 connection).
 func (sc *ServerConn) Read() (req *Request, err os.Error) {
 
-	// Ensure ordered execution of Read's and Write's
+	// Ensure ordered execution of Reads and Writes
 	id := sc.pipe.Next()
 	sc.pipe.StartRequest(id)
 	defer func() {
@@ -158,9 +158,7 @@ func (sc *ServerConn) Write(req *Request, resp *Response) os.Error {
 
 	// Ensure pipeline order
 	sc.pipe.StartResponse(id)
-	defer func() {
-		sc.pipe.EndResponse(id)
-	}()
+	defer sc.pipe.EndResponse(id)
 
 	sc.lk.Lock()
 	if sc.we != nil {
@@ -238,7 +236,7 @@ func (cc *ClientConn) Close() (c net.Conn, r *bufio.Reader) {
 // underlying TCP connection, which is usually considered as graceful close.
 func (cc *ClientConn) Write(req *Request) (err os.Error) {
 
-	// Ensure ordered execution of Write's
+	// Ensure ordered execution of Writes
 	id := cc.pipe.Next()
 	cc.pipe.StartRequest(id)
 	defer func() {
@@ -311,9 +309,7 @@ func (cc *ClientConn) Read(req *Request) (resp *Response, err os.Error) {
 
 	// Ensure pipeline order
 	cc.pipe.StartResponse(id)
-	defer func() {
-		cc.pipe.EndResponse(id)
-	}()
+	defer cc.pipe.EndResponse(id)
 
 	cc.lk.Lock()
 	if cc.re != nil {
@@ -357,12 +353,11 @@ func (cc *ClientConn) Read(req *Request) (resp *Response, err os.Error) {
 	return
 }
 
-// Fetch is convenience method that writes a request and reads a response.
-func (cc *ClientConn) Fetch(req *Request) (resp *Response, err os.Error) {
+// Do is convenience method that writes a request and reads a response.
+func (cc *ClientConn) Do(req *Request) (resp *Response, err os.Error) {
 	err = cc.Write(req)
 	if err != nil {
 		return
 	}
-	resp, err = cc.Read(req)
-	return
+	return cc.Read(req)
 }
