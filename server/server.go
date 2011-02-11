@@ -5,7 +5,6 @@
 package server
 
 import (
-	"bufio"
 	"container/list"
 	"net"
 	"os"
@@ -13,8 +12,8 @@ import (
 	"strings"
 	"sync"
 	"time"
-	. "github.com/petar/GoHTTP/http"
-	. "github.com/petar/GoHTTP/util"
+	"github.com/petar/GoHTTP/http"
+	"github.com/petar/GoHTTP/util"
 )
 
 // Server automates the reception of incoming HTTP connections
@@ -27,46 +26,9 @@ type Server struct {
 	listen net.Listener
 	conns  map[*stampedServerConn]int
 	qch    chan *Query
-	fdl    FDLimiter
+	fdl    util.FDLimiter
 	lk     sync.Mutex
 	config Config // Server configuration
-}
-
-type stampedServerConn struct {
-	*ServerConn
-	stamp int64
-	lk    sync.Mutex
-}
-
-func newStampedServerConn(c net.Conn, r *bufio.Reader) *stampedServerConn {
-	return &stampedServerConn{
-		ServerConn: NewServerConn(c, r),
-		stamp:      time.Nanoseconds(),
-	}
-}
-
-func (ssc *stampedServerConn) touch() {
-	ssc.lk.Lock()
-	defer ssc.lk.Unlock()
-	ssc.stamp = time.Nanoseconds()
-}
-
-func (ssc *stampedServerConn) GetStamp() int64 {
-	ssc.lk.Lock()
-	defer ssc.lk.Unlock()
-	return ssc.stamp
-}
-
-func (ssc *stampedServerConn) Read() (req *Request, err os.Error) {
-	ssc.touch()
-	defer ssc.touch()
-	return ssc.ServerConn.Read()
-}
-
-func (ssc *stampedServerConn) Write(req *Request, resp *Response) (err os.Error) {
-	ssc.touch()
-	defer ssc.touch()
-	return ssc.ServerConn.Write(req, resp)
 }
 
 // NewServer creates a new Server which listens for connections on l.
@@ -104,7 +66,7 @@ func (srv *Server) SetStatic(urlPrefix, localPath string) os.Error {
 	return nil
 }
 
-func (srv *Server) GetFDLimiter() *FDLimiter { return &srv.fdl }
+func (srv *Server) GetFDLimiter() *util.FDLimiter { return &srv.fdl }
 
 func (srv *Server) expireLoop() {
 	for {
@@ -159,7 +121,7 @@ func (srv *Server) acceptLoop() {
 			srv.qch <- newQueryErr(err)
 			return
 		}
-		c = NewRunOnCloseConn(c, func() { srv.fdl.Unlock() })
+		c = util.NewRunOnCloseConn(c, func() { srv.fdl.Unlock() })
 		ssc := newStampedServerConn(c, nil)
 		ok := srv.register(ssc)
 		if !ok {
@@ -207,7 +169,7 @@ func (srv *Server) dispatch(q *Query) *Query {
 	}
 	p = p[len(surl):]
 	full := path.Join(srv.config.StaticPath, p)
-	resp, _ := NewResponseFile(full)
+	resp, _ := http.NewResponseFile(full)
 	q.Write(resp)
 	q.Continue()
 	return nil

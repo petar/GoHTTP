@@ -7,7 +7,7 @@ package server
 import (
 	"os"
 	"path"
-	. "github.com/petar/GoHTTP/http"
+	"github.com/petar/GoHTTP/http"
 )
 
 // Incoming requests are presented to the user as a Query object.
@@ -17,7 +17,7 @@ import (
 type Query struct {
 	srv      *Server
 	ssc      *stampedServerConn
-	req      *Request
+	req      *http.Request
 	err      os.Error
 	fwd      bool
 	hijacked bool
@@ -32,7 +32,7 @@ func (q *Query) getError() os.Error { return q.err }
 
 // GetRequest() returns the underlying request. The result
 // is never nil.
-func (q *Query) GetRequest() *Request { return q.req }
+func (q *Query) GetRequest() *http.Request { return q.req }
 
 func (q *Query) GetPath() string { 
 	return path.Clean(q.req.URL.Path)
@@ -56,7 +56,7 @@ func (q *Query) Continue() {
 // and the user becomes responsible for it.
 // For every query returned by Server.Read(), the user must
 // call either Continue() or Hijack(), but not both, and only once.
-func (q *Query) Hijack() *ServerConn {
+func (q *Query) Hijack() *http.ServerConn {
 	if q.fwd {
 		panic("continue and hijack")
 	}
@@ -73,7 +73,7 @@ func (q *Query) Hijack() *ServerConn {
 // Write sends resp back on the connection that produced the request.
 // Any non-nil error returned pertains to the ServerConn and not
 // to the Server as a whole.
-func (q *Query) Write(resp *Response) (err os.Error) {
+func (q *Query) Write(resp *http.Response) (err os.Error) {
 	req := q.req
 	q.req = nil
 	err = q.ssc.Write(req, resp)

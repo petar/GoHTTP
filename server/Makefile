@@ -9,5 +9,6 @@ GOFILES=\
 	config.go\
 	query.go\
 	server.go\
+	stamped.go\
 
 include $(GOROOT)/src/Make.pkg
