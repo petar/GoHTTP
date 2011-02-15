@@ -142,12 +142,10 @@ func Get(url string) (r *Response, finalURL string, err os.Error) {
 		}
 		if shouldRedirect(r.StatusCode) {
 			r.Body.Close()
-			loc := r.GetHeader("Location")
-			if loc == nil {
+			if url = r.GetHeaderFirst("Location"); url == "" {
 				err = os.ErrorString(fmt.Sprintf("%d response missing Location header", r.StatusCode))
 				break
 			}
-			url = loc[0];
 			base = req.URL
 			continue
 		}

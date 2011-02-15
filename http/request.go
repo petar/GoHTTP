@@ -421,6 +421,9 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 	// First line: GET /index.html HTTP/1.0
 	var s string
 	if s, err = tp.ReadLine(); err != nil {
+		if err == os.EOF {
+			err = io.ErrUnexpectedEOF
+		}
 		return nil, err
 	}
 

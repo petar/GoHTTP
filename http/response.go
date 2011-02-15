@@ -85,6 +85,9 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 	// Parse the first line of the response.
 	line, err := tp.ReadLine()
 	if err != nil {
+		if err == os.EOF {
+			err = io.ErrUnexpectedEOF
+		}
 		return nil, err
 	}
 	f := strings.Split(line, " ", 3)
@@ -128,7 +131,7 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 // like
 //	Cache-Control: no-cache
 func fixPragmaCacheControl(header map[string][]string) {
-	if hp, ok := header["Pragma"]; ok && len(hp)>0 && hp[0] == "no-cache" {
+	if hp, ok := header["Pragma"]; ok && len(hp) > 0 && hp[0] == "no-cache" {
 		if _, presentcc := header["Cache-Control"]; !presentcc {
 			header["Cache-Control"] = []string{"no-cache"}
 		}
@@ -155,9 +158,15 @@ func (r *Response) GetHeader(key string) (value []string) {
 	return r.Header[CanonicalHeaderKey(key)]
 }
 
+// GetHeaderFirst returns the first value, if any, for the given key,
+// or an empty string otherwise
+func (r *Response) GetHeaderFirst(key string) string {
+	return GetFirstValue(r.Header, CanonicalHeaderKey(key))
+}
+
 // GetFirstHeaderValue returns the first element of header[key],
 // or "" otherwise.
-func GetFirstHeaderValue(header map[string][]string, key string) string {
+func GetFirstValue(header map[string][]string, key string) string {
 	v_, ok := header[key]
 	if !ok {
 		return ""
@@ -237,7 +246,7 @@ func writeSortedKeyValue(w io.Writer, kvm map[string][]string, exclude map[strin
 	for k, vv := range kvm {
 		if !exclude[k] {
 			for _, v := range vv {
-				kva = append(kva, fmt.Sprint(k + ": " + v + "\r\n"))
+				kva = append(kva, fmt.Sprint(k+": "+v+"\r\n"))
 			}
 		}
 	}
