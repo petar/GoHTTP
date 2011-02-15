@@ -11,13 +11,13 @@ package http
 
 import (
 	"bufio"
-	"bytes"
 	"container/vector"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"mime"
 	"mime/multipart"
+	"net/textproto"
 	"os"
 	"strconv"
 	"strings"
@@ -90,7 +90,7 @@ type Request struct {
 	// The request parser implements this by canonicalizing the
 	// name, making the first character and any characters
 	// following a hyphen uppercase and the rest lowercase.
-	Header map[string]string
+	Header map[string][]string
 
 	// The message body.
 	Body io.ReadCloser
@@ -133,7 +133,7 @@ type Request struct {
 	// Trailer maps trailer keys to values.  Like for Header, if the
 	// response has multiple trailer lines with the same key, they will be
 	// concatenated, delimited by commas.
-	Trailer map[string]string
+	Trailer map[string][]string
 }
 
 // ProtoAtLeast returns whether the HTTP protocol used
@@ -146,11 +146,11 @@ func (r *Request) ProtoAtLeast(major, minor int) bool {
 // MultipartReader returns a MIME multipart reader if this is a
 // multipart/form-data POST request, else returns nil and an error.
 func (r *Request) MultipartReader() (multipart.Reader, os.Error) {
-	v, ok := r.Header["Content-Type"]
+	v_, ok := r.Header["Content-Type"]
 	if !ok {
 		return nil, ErrNotMultipart
 	}
-	d, params := mime.ParseMediaType(v)
+	d, params := mime.ParseMediaType(v_[0])
 	if d != "multipart/form-data" {
 		return nil, ErrNotMultipart
 	}
@@ -275,78 +275,6 @@ func readLine(b *bufio.Reader) (s string, err os.Error) {
 		return "", e
 	}
 	return string(p), nil
-}
-
-var colon = []byte{':'}
-
-// Read a key/value pair from b.
-// A key/value has the form Key: Value\r\n
-// and the Value can continue on multiple lines if each continuation line
-// starts with a space.
-func readKeyValue(b *bufio.Reader) (key, value string, err os.Error) {
-	line, e := readLineBytes(b)
-	if e != nil {
-		return "", "", e
-	}
-	if len(line) == 0 {
-		return "", "", nil
-	}
-
-	// Scan first line for colon.
-	i := bytes.Index(line, colon)
-	if i < 0 {
-		goto Malformed
-	}
-
-	key = string(line[0:i])
-	if strings.Contains(key, " ") {
-		// Key field has space - no good.
-		goto Malformed
-	}
-
-	// Skip initial space before value.
-	for i++; i < len(line); i++ {
-		if line[i] != ' ' {
-			break
-		}
-	}
-	value = string(line[i:])
-
-	// Look for extension lines, which must begin with space.
-	for {
-		c, e := b.ReadByte()
-		if c != ' ' {
-			if e != os.EOF {
-				b.UnreadByte()
-			}
-			break
-		}
-
-		// Eat leading space.
-		for c == ' ' {
-			if c, e = b.ReadByte(); e != nil {
-				if e == os.EOF {
-					e = io.ErrUnexpectedEOF
-				}
-				return "", "", e
-			}
-		}
-		b.UnreadByte()
-
-		// Read the rest of the line and add to value.
-		if line, e = readLineBytes(b); e != nil {
-			return "", "", e
-		}
-		value += " " + string(line)
-
-		if len(value) >= maxValueLength {
-			return "", "", &badStringError{"value too long for key", key}
-		}
-	}
-	return key, value, nil
-
-Malformed:
-	return "", "", &badStringError{"malformed header line", string(line)}
 }
 
 // Convert decimal at s[i:len(s)] to integer,
@@ -486,11 +414,13 @@ func (cr *chunkedReader) Read(b []uint8) (n int, err os.Error) {
 
 // ReadRequest reads and parses a request from b.
 func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
+
+	tp := textproto.NewReader(b)
 	req = new(Request)
 
 	// First line: GET /index.html HTTP/1.0
 	var s string
-	if s, err = readLine(b); err != nil {
+	if s, err = tp.ReadLine(); err != nil {
 		return nil, err
 	}
 
@@ -509,31 +439,9 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 	}
 
 	// Subsequent lines: Key: value.
-	nheader := 0
-	req.Header = make(map[string]string)
-	for {
-		var key, value string
-		if key, value, err = readKeyValue(b); err != nil {
-			return nil, err
-		}
-		if key == "" {
-			break
-		}
-		if nheader++; nheader >= maxHeaderLines {
-			return nil, ErrHeaderTooLong
-		}
-
-		key = CanonicalHeaderKey(key)
-
-		// RFC 2616 says that if you send the same header key
-		// multiple times, it has to be semantically equivalent
-		// to concatenating the values separated by commas.
-		oldvalue, present := req.Header[key]
-		if present {
-			req.Header[key] = oldvalue + "," + value
-		} else {
-			req.Header[key] = value
-		}
+	req.Header, err = tp.ReadMIMEHeader()
+	if err != nil {
+		return nil, err
 	}
 
 	// RFC2616: Must treat
@@ -545,18 +453,27 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 	// the same.  In the second case, any Host line is ignored.
 	req.Host = req.URL.Host
 	if req.Host == "" {
-		req.Host = req.Header["Host"]
+		host_, ok := req.Header["Host"]
+		if ok {
+			req.Host = host_[0]
+		}
 	}
-	req.Header["Host"] = "", false
+	req.Header["Host"] = nil, false
 
 	fixPragmaCacheControl(req.Header)
 
 	// Pull out useful fields as a convenience to clients.
-	req.Referer = req.Header["Referer"]
-	req.Header["Referer"] = "", false
+	referer_, ok := req.Header["Referer"]
+	if ok {
+		req.Referer = referer_[0]
+	}
+	req.Header["Referer"] = nil, false
 
-	req.UserAgent = req.Header["User-Agent"]
-	req.Header["User-Agent"] = "", false
+	useragent_, ok := req.Header["User-Agent"]
+	if ok {
+		req.UserAgent = useragent_[0]
+	}
+	req.Header["User-Agent"] = nil, false
 
 	// TODO: Parse specific header values:
 	//	Accept
@@ -642,7 +559,11 @@ func (r *Request) ParseForm() (err os.Error) {
 		if r.Body == nil {
 			return os.ErrorString("missing form body")
 		}
-		ct := r.Header["Content-Type"]
+		ct_, ok := r.Header["Content-Type"]
+		var ct string
+		if ok {
+			ct = ct_[0]
+		}
 		switch strings.Split(ct, ";", 2)[0] {
 		case "text/plain", "application/x-www-form-urlencoded", "":
 			b, e := ioutil.ReadAll(r.Body)
@@ -670,24 +591,24 @@ func (r *Request) FormValue(key string) string {
 	if r.Form == nil {
 		r.ParseForm()
 	}
-	if vs := r.Form[key]; len(vs) > 0 {
+	if vs, ok := r.Form[key]; ok {
 		return vs[0]
 	}
 	return ""
 }
 
 func (r *Request) expectsContinue() bool {
-	expectation, ok := r.Header["Expect"]
-	return ok && strings.ToLower(expectation) == "100-continue"
+	expectation_, ok := r.Header["Expect"]
+	return ok && strings.ToLower(expectation_[0]) == "100-continue"
 }
 
 func (r *Request) wantsHttp10KeepAlive() bool {
 	if r.ProtoMajor != 1 || r.ProtoMinor != 0 {
 		return false
 	}
-	value, exists := r.Header["Connection"]
+	value_, exists := r.Header["Connection"]
 	if !exists {
 		return false
 	}
-	return strings.Contains(strings.ToLower(value), "keep-alive")
+	return strings.Contains(strings.ToLower(value_[0]), "keep-alive")
 }

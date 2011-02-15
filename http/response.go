@@ -10,6 +10,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"net/textproto"
 	"os"
 	"sort"
 	"strconv"
@@ -43,7 +44,7 @@ type Response struct {
 	// omitted from Header.
 	//
 	// Keys in the map are canonicalized (see CanonicalHeaderKey).
-	Header map[string]string
+	Header map[string][]string
 
 	// Body represents the response body.
 	Body io.ReadCloser
@@ -66,7 +67,7 @@ type Response struct {
 	// Trailer maps trailer keys to values.  Like for Header, if the
 	// response has multiple trailer lines with the same key, they will be
 	// concatenated, delimited by commas.
-	Trailer map[string]string
+	Trailer map[string][]string
 }
 
 // ReadResponse reads and returns an HTTP response from r.  The RequestMethod
@@ -76,12 +77,13 @@ type Response struct {
 // key/value pairs included in the response trailer.
 func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os.Error) {
 
+	tp := textproto.NewReader(r)
 	resp = new(Response)
 
 	resp.RequestMethod = strings.ToUpper(requestMethod)
 
 	// Parse the first line of the response.
-	line, err := readLine(r)
+	line, err := tp.ReadLine()
 	if err != nil {
 		return nil, err
 	}
@@ -106,20 +108,9 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 	}
 
 	// Parse the response headers.
-	nheader := 0
-	resp.Header = make(map[string]string)
-	for {
-		key, value, err := readKeyValue(r)
-		if err != nil {
-			return nil, err
-		}
-		if key == "" {
-			break // end of response header
-		}
-		if nheader++; nheader >= maxHeaderLines {
-			return nil, ErrHeaderTooLong
-		}
-		resp.AddHeader(key, value)
+	resp.Header, err = tp.ReadMIMEHeader()
+	if err != nil {
+		return nil, err
 	}
 
 	fixPragmaCacheControl(resp.Header)
@@ -136,10 +127,10 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 //	Pragma: no-cache
 // like
 //	Cache-Control: no-cache
-func fixPragmaCacheControl(header map[string]string) {
-	if header["Pragma"] == "no-cache" {
+func fixPragmaCacheControl(header map[string][]string) {
+	if hp, ok := header["Pragma"]; ok && len(hp)>0 && hp[0] == "no-cache" {
 		if _, presentcc := header["Cache-Control"]; !presentcc {
-			header["Cache-Control"] = "no-cache"
+			header["Cache-Control"] = []string{"no-cache"}
 		}
 	}
 }
@@ -150,9 +141,9 @@ func (r *Response) AddHeader(key, value string) {
 
 	oldValues, oldValuesPresent := r.Header[key]
 	if oldValuesPresent {
-		r.Header[key] = oldValues + "," + value
+		oldValues[0] = oldValues[0] + "," + value
 	} else {
-		r.Header[key] = value
+		r.Header[key] = []string{value}
 	}
 }
 
@@ -160,7 +151,7 @@ func (r *Response) AddHeader(key, value string) {
 // If there were multiple headers with this key, their values are concatenated,
 // with a comma delimiter.  If there were no response headers with the given
 // key, GetHeader returns an empty string.  Keys are not case sensitive.
-func (r *Response) GetHeader(key string) (value string) {
+func (r *Response) GetHeader(key string) (value []string) {
 	return r.Header[CanonicalHeaderKey(key)]
 }
 
@@ -231,16 +222,15 @@ func (resp *Response) Write(w io.Writer) os.Error {
 	return nil
 }
 
-func writeSortedKeyValue(w io.Writer, kvm map[string]string, exclude map[string]bool) os.Error {
-	kva := make([]string, len(kvm))
-	i := 0
-	for k, v := range kvm {
+func writeSortedKeyValue(w io.Writer, kvm map[string][]string, exclude map[string]bool) os.Error {
+	kva := make([]string, 0, len(kvm))
+	for k, vv := range kvm {
 		if !exclude[k] {
-			kva[i] = fmt.Sprint(k + ": " + v + "\r\n")
-			i++
+			for _, v := range vv {
+				kva = append(kva, fmt.Sprint(k + ": " + v + "\r\n"))
+			}
 		}
 	}
-	kva = kva[0:i]
 	sort.SortStrings(kva)
 	for _, l := range kva {
 		if _, err := io.WriteString(w, l); err != nil {

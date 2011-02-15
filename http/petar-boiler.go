@@ -25,7 +25,7 @@ func NewResponse200CONNECT() *Response {
 		ProtoMinor:    1,
 		RequestMethod: "CONNECT",
 		Close:         false,
-		Header:        map[string]string{"Proxy-Agent": "Go-HTTP-package"},
+		Header:        map[string][]string{"Proxy-Agent": []string{"Go-HTTP-package"}},
 	}
 }
 

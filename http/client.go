@@ -51,9 +51,9 @@ func send(req *Request) (resp *Response, err os.Error) {
 		encoded := make([]byte, enc.EncodedLen(len(info)))
 		enc.Encode(encoded, []byte(info))
 		if req.Header == nil {
-			req.Header = make(map[string]string)
+			req.Header = make(map[string][]string)
 		}
-		req.Header["Authorization"] = "Basic " + string(encoded)
+		req.Header["Authorization"] = []string{"Basic " + string(encoded)}
 	}
 
 	var conn io.ReadWriteCloser
@@ -142,10 +142,12 @@ func Get(url string) (r *Response, finalURL string, err os.Error) {
 		}
 		if shouldRedirect(r.StatusCode) {
 			r.Body.Close()
-			if url = r.GetHeader("Location"); url == "" {
+			loc := r.GetHeader("Location")
+			if loc == nil {
 				err = os.ErrorString(fmt.Sprintf("%d response missing Location header", r.StatusCode))
 				break
 			}
+			url = loc[0];
 			base = req.URL
 			continue
 		}
@@ -167,8 +169,8 @@ func Post(url string, bodyType string, body io.Reader) (r *Response, err os.Erro
 	req.ProtoMinor = 1
 	req.Close = true
 	req.Body = nopCloser{body}
-	req.Header = map[string]string{
-		"Content-Type": bodyType,
+	req.Header = map[string][]string{
+		"Content-Type": []string{bodyType},
 	}
 	req.TransferEncoding = []string{"chunked"}
 
@@ -192,9 +194,9 @@ func PostForm(url string, data map[string]string) (r *Response, err os.Error) {
 	req.Close = true
 	body := urlencode(data)
 	req.Body = nopCloser{body}
-	req.Header = map[string]string{
-		"Content-Type":   "application/x-www-form-urlencoded",
-		"Content-Length": strconv.Itoa(body.Len()),
+	req.Header = map[string][]string{
+		"Content-Type":   []string{"application/x-www-form-urlencoded"},
+		"Content-Length": []string{strconv.Itoa(body.Len())},
 	}
 	req.ContentLength = int64(body.Len())
 
