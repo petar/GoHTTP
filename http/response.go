@@ -155,6 +155,16 @@ func (r *Response) GetHeader(key string) (value []string) {
 	return r.Header[CanonicalHeaderKey(key)]
 }
 
+// GetFirstHeaderValue returns the first element of header[key],
+// or "" otherwise.
+func GetFirstHeaderValue(header map[string][]string, key string) string {
+	v_, ok := header[key]
+	if !ok {
+		return ""
+	}
+	return v_[0]
+}
+
 // ProtoAtLeast returns whether the HTTP protocol used
 // in the response is at least major.minor.
 func (r *Response) ProtoAtLeast(major, minor int) bool {
