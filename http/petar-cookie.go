@@ -21,18 +21,14 @@ import (
 type Cookie struct {
 	Value           string
 	Path            string
-	IncludePath     bool	// Whether to include a "$Path=" pair in "Cookie:" lines
 	Domain          string
-	IncludeDomain   bool	// Similar to IncludePath
 	Comment         string
-	IncludeComment  bool	// Similar to IncludePath
 	Version         uint
 	Expires         time.Time
 	ExpiresRaw      string
 	MaxAge          int64	// Max age in nanoseconds
 	Secure          bool
 	HttpOnly        bool
-	IncludeHttpOnly bool	// Similar to IncludePath
 	Raw             string
 	Unparsed        []string // Raw text of unparsed attribute-value pairs
 }
@@ -69,7 +65,7 @@ func extractSetCookies(h map[string][]string) *Cookies {
 		}
 		value, err := URLUnescape(nv[1])
 		if err != nil {
-			unparsed_lines = append(unparsed_lines, ktext)
+			unparsed_lines = append(unparsed_lines, line)
 			continue
 		}
 		c := Cookie{
@@ -140,8 +136,8 @@ func extractSetCookies(h map[string][]string) *Cookies {
 		} // Cookie attribute-value iteration
 		(*cookies)[name] = c
 	} // header "Set-Cookie" value iteration
-	if len(unparsed) > 0 {
-		h["Set-Cookie"] = unparsed
+	if len(unparsed_lines) > 0 {
+		h["Set-Cookie"] = unparsed_lines
 	} else {
 		h["Set-Cookie"] = nil, false
 	}
@@ -161,25 +157,35 @@ func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 			version = "Version=" + strconv.Uitoa(c.Version) + "; "
 		}
 		var path string
-		if c.IncludePath && len(c.Path) > 0 {
-			path = "$Path=" + URLEscape(c.Path) + "; "
+		if len(c.Path) > 0 {
+			path = "Path=" + URLEscape(c.Path) + "; "
 		}
 		var domain string
-		if c.IncludeDomain && len(c.Domain) > 0 {
-			domain = "$Domain=" + URLEscape(c.Domain) + "; "
+		if len(c.Domain) > 0 {
+			domain = "Domain=" + URLEscape(c.Domain) + "; "
+		}
+		var expires string
+		if len(c.Expires.Zone) > 0 {
+			expires = "Expires=" + c.Expires.Format(time.RFC1123) + "; "
+		}
+		var maxage string
+		if c.MaxAge >= 0 {
+			maxage = "Max-Age=" + strconv.Itoa64(c.MaxAge) + "; "
 		}
 		var httponly string
-		if c.IncludeHttpOnly && c.HttpOnly {
-			httponly = "$HttpOnly; "
+		if c.HttpOnly {
+			httponly = "HttpOnly; "
+		}
+		var secure string
+		if c.Secure {
+			secure = "Secure; "
 		}
 		var comment string
-		if c.IncludeComment && len(c.Comment) > 0 {
-			comment = "$Comment=" + URLEscape(c.Comment) + "; "
+		if len(c.Comment) > 0 {
+			comment = "Comment=" + URLEscape(c.Comment) + "; "
 		}
-		??
 		lines = append(lines,
-			"Cookie: "+value+version+domain+path+
-				expires+maxage+secure+httponly+comment)
+			"SetCookie: "+value+version+domain+path+expires+maxage+secure+httponly+comment)
 	}
 	sort.SortStrings(lines)
 	for _, l := range lines {
@@ -207,7 +213,7 @@ func extractCookies(h map[string][]string) *Cookies {
 		}
 		// Per-line attributes
 		var line_cookies = make(map[string]string)
-		var version int
+		var version uint
 		var path string
 		var domain string
 		var comment string
@@ -249,7 +255,7 @@ func extractCookies(h map[string][]string) *Cookies {
 			}
 		} // attribute-value iteration
 		if len(line_cookies) == 0 {
-			unparsed_lines = append(unparsed_line, line)
+			unparsed_lines = append(unparsed_lines, line)
 		}
 		for n, v := range line_cookies {
 			(*cookies)[n] = Cookie{
@@ -272,7 +278,7 @@ func extractCookies(h map[string][]string) *Cookies {
 	return cookies
 }
 
-// writeSetCookies() writes the wire representation of the cookies
+// writeCookies() writes the wire representation of the cookies
 // to w#. Each cookie is written on a separate "Cookie: " line.
 // This choice is made because HTTP parsers tend to have a limit on
 // line-length, so it seems safer to place cookies on separate lines.
@@ -286,31 +292,19 @@ func (kk *Cookies) writeCookies(w io.Writer) os.Error {
 		}
 		var path string
 		if len(c.Path) > 0 {
-			path = "Path=" + URLEscape(c.Path) + "; "
+			path = "$Path=" + URLEscape(c.Path) + "; "
 		}
 		var domain string
 		if len(c.Domain) > 0 {
-			domain = "Domain=" + URLEscape(c.Domain) + "; "
-		}
-		var expires string
-		if len(c.Expires.Zone) > 0 {
-			expires = "Expires=" + c.Expires.Format(time.RFC1123) + "; "
-		}
-		var maxage string
-		if c.MaxAge >= 0 {
-			maxage = "Max-Age=" + strconv.Itoa64(c.MaxAge/1e9) + "; "
-		}
-		var secure string
-		if c.Secure {
-			secure = "Secure; "
+			domain = "$Domain=" + URLEscape(c.Domain) + "; "
 		}
 		var httponly string
 		if c.HttpOnly {
-			httponly = "HttpOnly; "
+			httponly = "$HttpOnly; "
 		}
 		var comment string
 		if len(c.Comment) > 0 {
-			comment = "Comment=" + URLEscape(c.Comment) + "; "
+			comment = "$Comment=" + URLEscape(c.Comment) + "; "
 		}
 		lines = append(lines, "Cookie: "+version+value+domain+path+httponly+comment)
 	}
