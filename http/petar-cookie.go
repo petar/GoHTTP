@@ -184,8 +184,9 @@ func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 		if len(c.Comment) > 0 {
 			comment = "Comment=" + URLEscape(c.Comment) + "; "
 		}
-		lines = append(lines,
-			"SetCookie: "+value+version+domain+path+expires+maxage+secure+httponly+comment)
+		lines = append(lines, "Set-Cookie: " +
+			value + version + domain + path + expires +
+			maxage + secure + httponly + comment + "\r\n")
 	}
 	sort.SortStrings(lines)
 	for _, l := range lines {
@@ -306,7 +307,8 @@ func (kk *Cookies) writeCookies(w io.Writer) os.Error {
 		if len(c.Comment) > 0 {
 			comment = "$Comment=" + URLEscape(c.Comment) + "; "
 		}
-		lines = append(lines, "Cookie: "+version+value+domain+path+httponly+comment)
+		lines = append(lines, "Cookie: " + 
+			version + value + domain + path + httponly + comment + "\r\n")
 	}
 	sort.SortStrings(lines)
 	for _, l := range lines {
