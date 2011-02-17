@@ -44,7 +44,7 @@ type Response struct {
 	// omitted from Header.
 	//
 	// Keys in the map are canonicalized (see CanonicalHeaderKey).
-	Header map[string][]string
+	Header textproto.MIMEHeader
 
 	// Body represents the response body.
 	Body io.ReadCloser
@@ -136,32 +136,6 @@ func fixPragmaCacheControl(header map[string][]string) {
 			header["Cache-Control"] = []string{"no-cache"}
 		}
 	}
-}
-
-// AddHeader adds a value under the given key.  Keys are not case sensitive.
-func (r *Response) AddHeader(key, value string) {
-	key = CanonicalHeaderKey(key)
-
-	oldValues, oldValuesPresent := r.Header[key]
-	if oldValuesPresent {
-		oldValues[0] = oldValues[0] + "," + value
-	} else {
-		r.Header[key] = []string{value}
-	}
-}
-
-// GetHeader returns the value of the response header with the given key.
-// If there were multiple headers with this key, their values are concatenated,
-// with a comma delimiter.  If there were no response headers with the given
-// key, GetHeader returns an empty string.  Keys are not case sensitive.
-func (r *Response) GetHeader(key string) (value []string) {
-	return r.Header[CanonicalHeaderKey(key)]
-}
-
-// GetHeaderFirst returns the first value, if any, for the given key,
-// or an empty string otherwise
-func (r *Response) GetHeaderFirst(key string) string {
-	return GetFirstValue(r.Header, CanonicalHeaderKey(key))
 }
 
 // GetFirstHeaderValue returns the first element of header[key],

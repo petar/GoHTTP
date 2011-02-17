@@ -7,6 +7,7 @@ package http
 import (
 	"bufio"
 	"io"
+	"net/textproto"
 	"os"
 	"strconv"
 	"strings"
@@ -109,7 +110,7 @@ func (t *transferWriter) WriteHeader(w io.Writer) (err os.Error) {
 		io.WriteString(w, "Trailer: ")
 		needComma := false
 		for k := range t.Trailer {
-			k = CanonicalHeaderKey(k)
+			k = textproto.CanonicalHeaderKey(k)
 			switch k {
 			case "Transfer-Encoding", "Trailer", "Content-Length":
 				return &badStringError{"invalid Trailer key", k}
@@ -419,7 +420,7 @@ func fixTrailer(header map[string][]string, te []string) (map[string][]string, o
 	trailer := make(map[string][]string)
 	keys := strings.Split(raw[0], ",", -1)
 	for _, key := range keys {
-		key = CanonicalHeaderKey(strings.TrimSpace(key))
+		key = textproto.CanonicalHeaderKey(strings.TrimSpace(key))
 		switch key {
 		case "Transfer-Encoding", "Trailer", "Content-Length":
 			return nil, &badStringError{"bad trailer key", key}

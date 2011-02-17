@@ -90,7 +90,7 @@ type Request struct {
 	// The request parser implements this by canonicalizing the
 	// name, making the first character and any characters
 	// following a hyphen uppercase and the rest lowercase.
-	Header map[string][]string
+	Header textproto.MIMEHeader
 
 	// The message body.
 	Body io.ReadCloser
@@ -310,43 +310,6 @@ func parseHTTPVersion(vers string) (int, int, bool) {
 		return 0, 0, false
 	}
 	return major, minor, true
-}
-
-// CanonicalHeaderKey returns the canonical format of the
-// HTTP header key s.  The canonicalization converts the first
-// letter and any letter following a hyphen to upper case;
-// the rest are converted to lowercase.  For example, the
-// canonical key for "accept-encoding" is "Accept-Encoding".
-func CanonicalHeaderKey(s string) string {
-	// canonicalize: first letter upper case
-	// and upper case after each dash.
-	// (Host, User-Agent, If-Modified-Since).
-	// HTTP headers are ASCII only, so no Unicode issues.
-	var a []byte
-	upper := true
-	for i := 0; i < len(s); i++ {
-		v := s[i]
-		if upper && 'a' <= v && v <= 'z' {
-			if a == nil {
-				a = []byte(s)
-			}
-			a[i] = v + 'A' - 'a'
-		}
-		if !upper && 'A' <= v && v <= 'Z' {
-			if a == nil {
-				a = []byte(s)
-			}
-			a[i] = v + 'a' - 'A'
-		}
-		upper = false
-		if v == '-' {
-			upper = true
-		}
-	}
-	if a != nil {
-		return string(a)
-	}
-	return s
 }
 
 type chunkedReader struct {
