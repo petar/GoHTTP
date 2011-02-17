@@ -21,5 +21,6 @@ GOFILES=\
 	petar-util.go\
 	petar-boiler.go\
 	cookie.go\
+	header.go\
 
 include $(GOROOT)/src/Make.pkg

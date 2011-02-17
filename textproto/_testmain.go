@@ -5,7 +5,7 @@ import "testing"
 import __regexp__ "regexp"
 
 var tests = []testing.InternalTest{
-	{"textproto.TestCanonicalHeaderKey", textproto.TestCanonicalHeaderKey},
+	{"textproto.TestCanonicalMIMEHeaderKey", textproto.TestCanonicalMIMEHeaderKey},
 	{"textproto.TestReadLine", textproto.TestReadLine},
 	{"textproto.TestReadContinuedLine", textproto.TestReadContinuedLine},
 	{"textproto.TestReadCodeLine", textproto.TestReadCodeLine},

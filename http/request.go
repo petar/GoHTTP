@@ -90,7 +90,7 @@ type Request struct {
 	// The request parser implements this by canonicalizing the
 	// name, making the first character and any characters
 	// following a hyphen uppercase and the rest lowercase.
-	Header textproto.MIMEHeader
+	Header Header
 
 	// The message body.
 	Body io.ReadCloser
@@ -405,10 +405,11 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 	}
 
 	// Subsequent lines: Key: value.
-	req.Header, err = tp.ReadMIMEHeader()
+	mimeHeader, err := tp.ReadMIMEHeader()
 	if err != nil {
 		return nil, err
 	}
+	req.Header = Header(mimeHeader)
 
 	// RFC2616: Must treat
 	//	GET /index.html HTTP/1.1

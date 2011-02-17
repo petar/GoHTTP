@@ -104,12 +104,10 @@ func serveFile(w ResponseWriter, r *Request, name string, redirect bool) {
 		}
 	}
 
-	ifmodsince_, ok := r.Header["If-Modified-Since"]
-	if ok {
-		if t, _ := time.Parse(TimeFormat, ifmodsince_[0]); t != nil && d.Mtime_ns/1e9 <= t.Seconds() {
-			w.WriteHeader(StatusNotModified)
-			return
-		}
+	if t, _ := time.Parse(TimeFormat, r.Header.Get("If-Modified-Since")); 
+		t != nil && d.Mtime_ns/1e9 <= t.Seconds() {
+		w.WriteHeader(StatusNotModified)
+		return
 	}
 	w.SetHeader("Last-Modified", time.SecondsToUTC(d.Mtime_ns/1e9).Format(TimeFormat))
 
@@ -156,7 +154,7 @@ func serveFile(w ResponseWriter, r *Request, name string, redirect bool) {
 
 	// handle Content-Range header.
 	// TODO(adg): handle multiple ranges
-	ranges, err := parseRange(r.Header["Range"], size)
+	ranges, err := parseRange(r.Header.Get("Range"), size)
 	if err != nil || len(ranges) > 1 {
 		Error(w, err.String(), StatusRequestedRangeNotSatisfiable)
 		return
@@ -214,16 +212,16 @@ type httpRange struct {
 }
 
 // parseRange parses a Range header string as per RFC 2616.
-func parseRange(s_ []string, size int64) ([]httpRange, os.Error) {
-	if s_ == nil {
+func parseRange(s string, size int64) ([]httpRange, os.Error) {
+	if s == "" {
 		return nil, nil // header not present
 	}
 	const b = "bytes="
-	if !strings.HasPrefix(s_[0], b) {
+	if !strings.HasPrefix(s, b) {
 		return nil, os.NewError("invalid range")
 	}
 	var ranges []httpRange
-	for _, ra := range strings.Split(s_[0][len(b):], ",", -1) {
+	for _, ra := range strings.Split(s[len(b):], ",", -1) {
 		i := strings.Index(ra, "-")
 		if i < 0 {
 			return nil, os.NewError("invalid range")

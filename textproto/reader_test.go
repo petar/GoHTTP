@@ -26,10 +26,10 @@ var canonicalHeaderKeyTests = []canonicalHeaderKeyTest{
 	{"USER-AGENT", "User-Agent"},
 }
 
-func TestCanonicalHeaderKey(t *testing.T) {
+func TestCanonicalMIMEHeaderKey(t *testing.T) {
 	for _, tt := range canonicalHeaderKeyTests {
-		if s := CanonicalHeaderKey(tt.in); s != tt.out {
-			t.Errorf("CanonicalHeaderKey(%q) = %q, want %q", tt.in, s, tt.out)
+		if s := CanonicalMIMEHeaderKey(tt.in); s != tt.out {
+			t.Errorf("CanonicalMIMEHeaderKey(%q) = %q, want %q", tt.in, s, tt.out)
 		}
 	}
 }

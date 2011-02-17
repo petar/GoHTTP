@@ -19,7 +19,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"net/textproto"
 	"os"
 	"path"
 	"strconv"
@@ -210,7 +209,7 @@ func (w *response) UsingTLS() bool {
 func (w *response) RemoteAddr() string { return w.conn.remoteAddr }
 
 // SetHeader implements the ResponseWriter.SetHeader method
-func (w *response) SetHeader(hdr, val string) { w.header[textproto.CanonicalHeaderKey(hdr)] = val }
+func (w *response) SetHeader(hdr, val string) { w.header[CanonicalHeaderKey(hdr)] = val }
 
 // WriteHeader implements the ResponseWriter.WriteHeader method
 func (w *response) WriteHeader(code int) {

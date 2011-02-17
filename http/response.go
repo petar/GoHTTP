@@ -44,7 +44,7 @@ type Response struct {
 	// omitted from Header.
 	//
 	// Keys in the map are canonicalized (see CanonicalHeaderKey).
-	Header textproto.MIMEHeader
+	Header Header
 
 	// Body represents the response body.
 	Body io.ReadCloser
@@ -111,10 +111,11 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 	}
 
 	// Parse the response headers.
-	resp.Header, err = tp.ReadMIMEHeader()
+	mimeHeader, err := tp.ReadMIMEHeader()
 	if err != nil {
 		return nil, err
 	}
+	resp.Header = Header(mimeHeader)
 
 	fixPragmaCacheControl(resp.Header)
 

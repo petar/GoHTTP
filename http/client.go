@@ -31,6 +31,40 @@ type readClose struct {
 	io.Closer
 }
 
+// matchNoProxy returns true if requests to addr should not use a proxy,
+// according to the NO_PROXY or no_proxy environment variable.
+func matchNoProxy(addr string) bool {
+	if len(addr) == 0 {
+		return false
+	}
+	no_proxy := os.Getenv("NO_PROXY")
+	if len(no_proxy) == 0 {
+		no_proxy = os.Getenv("no_proxy")
+	}
+	if no_proxy == "*" {
+		return true
+	}
+
+	addr = strings.ToLower(strings.TrimSpace(addr))
+	if hasPort(addr) {
+		addr = addr[:strings.LastIndex(addr, ":")]
+	}
+
+	for _, p := range strings.Split(no_proxy, ",", -1) {
+		p = strings.ToLower(strings.TrimSpace(p))
+		if len(p) == 0 {
+			continue
+		}
+		if hasPort(p) {
+			p = p[:strings.LastIndex(p, ":")]
+		}
+		if addr == p || (p[0] == '.' && (strings.HasSuffix(addr, p) || addr == p[1:])) {
+			return true
+		}
+	}
+	return false
+}
+
 // Send issues an HTTP request.  Caller should close resp.Body when done reading it.
 //
 // TODO: support persistent connections (multiple requests on a single connection).
@@ -51,9 +85,9 @@ func send(req *Request) (resp *Response, err os.Error) {
 		encoded := make([]byte, enc.EncodedLen(len(info)))
 		enc.Encode(encoded, []byte(info))
 		if req.Header == nil {
-			req.Header = make(map[string][]string)
+			req.Header = make(Header)
 		}
-		req.Header["Authorization"] = []string{"Basic " + string(encoded)}
+		req.Header.Set("Authorization", "Basic " + string(encoded))
 	}
 
 	var conn io.ReadWriteCloser
@@ -167,8 +201,8 @@ func Post(url string, bodyType string, body io.Reader) (r *Response, err os.Erro
 	req.ProtoMinor = 1
 	req.Close = true
 	req.Body = nopCloser{body}
-	req.Header = map[string][]string{
-		"Content-Type": []string{bodyType},
+	req.Header = Header{
+		"Content-Type": {bodyType},
 	}
 	req.TransferEncoding = []string{"chunked"}
 
@@ -192,9 +226,9 @@ func PostForm(url string, data map[string]string) (r *Response, err os.Error) {
 	req.Close = true
 	body := urlencode(data)
 	req.Body = nopCloser{body}
-	req.Header = map[string][]string{
-		"Content-Type":   []string{"application/x-www-form-urlencoded"},
-		"Content-Length": []string{strconv.Itoa(body.Len())},
+	req.Header = Header{
+		"Content-Type":   {"application/x-www-form-urlencoded"},
+		"Content-Length": {strconv.Itoa(body.Len())},
 	}
 	req.ContentLength = int64(body.Len())
 

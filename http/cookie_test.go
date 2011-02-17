@@ -73,7 +73,7 @@ type readSetCookiesTest struct {
 var readSetCookiesTests = []readSetCookiesTest{
 	{
 		textproto.MIMEHeader{"Set-Cookie": {"Cookie-1=v%241; "}},
-		Cookies{"Cookie-1": Cookie{ Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241" }}, 
+		Cookies{"Cookie-1": Cookie{ Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; " }}, 
 	},
 }
 
@@ -87,19 +87,26 @@ func TestReadSetCookies(t *testing.T) {
 	}
 }
 
-/*
-func diff(t *testing.T, prefix string, have, want interface{}) {
-	hv := reflect.NewValue(have).(*reflect.PtrValue).Elem().(*reflect.StructValue)
-	wv := reflect.NewValue(want).(*reflect.PtrValue).Elem().(*reflect.StructValue)
-	if hv.Type() != wv.Type() {
-		t.Errorf("%s: type mismatch %v vs %v", prefix, hv.Type(), wv.Type())
-	}
-	for i := 0; i < hv.NumField(); i++ {
-		hf := hv.Field(i).Interface()
-		wf := wv.Field(i).Interface()
-		if !reflect.DeepEqual(hf, wf) {
-			t.Errorf("%s: %s = %v want %v", prefix, hv.Type().(*reflect.StructType).Field(i).Name, hf, wf)
+/* readCookies test */
+
+type readCookiesTest struct {
+	Header textproto.MIMEHeader
+	Cookies
+}
+
+var readCookiesTests = []readCookiesTest{
+	{
+		textproto.MIMEHeader{"Cookie": {"Cookie-1=v%241; "}},
+		Cookies{"Cookie-1": Cookie{ Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; " }}, 
+	},
+}
+
+func TestReadCookies(t *testing.T) {
+	for i, tt := range readCookiesTests {
+		c := readCookies(tt.Header)
+		if !reflect.DeepEqual(map[string]Cookie(*c), map[string]Cookie(tt.Cookies)) {
+			t.Errorf("#%d readSetCookies: have\n%#v\nwant\n%#v\n", i, (*c), tt.Cookies)
+			continue
 		}
 	}
 }
-*/

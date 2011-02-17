@@ -6,7 +6,6 @@ package http
 
 import (
 	"io"
-	"net/textproto"
 	"os"
 	"sort"
 	"strconv"
@@ -39,6 +38,19 @@ type Cookie struct {
 // For Request headers, only the Value@ field of Cookie{} is significant.
 type Cookies map[string]Cookie
 
+// Get() returns the value of a cookie with the given key,
+// or the empty string otherwise.
+func (kk Cookies) Get(key string) string {
+	if kk == nil {
+		return ""
+	}
+	c, ok := kk[key]
+	if !ok {
+		return ""
+	}
+	return c.Value
+}
+
 // readSetCookies() parses all "Set-Cookie" values from
 // the header h#, removes the successfully parsed values from the 
 // "Set-Cookie" key in h# and returns the parsed Cookie{}s.
@@ -50,8 +62,8 @@ func readSetCookies(h map[string][]string) *Cookies {
 	}
 	unparsed_lines := make([]string, 0, 3)
 	for _, line := range lines {
-		parts := strings.Split(line, ";", -1)
-		if len(parts) == 0 {
+		parts := strings.Split(strings.TrimSpace(line), ";", -1)
+		if len(parts) == 1 && parts[0] == "" {
 			continue
 		}
 		nv := strings.Split(strings.TrimSpace(parts[0]), "=", 2) // Name=Value
@@ -76,7 +88,11 @@ func readSetCookies(h map[string][]string) *Cookies {
 			Unparsed: make([]string, 0, 1),
 		}
 		for i := 1; i < len(parts); i++ {
-			av := strings.Split(strings.TrimSpace(parts[i]), "=", 2) // Attribute=Value
+			parts[i] = strings.TrimSpace(parts[i])
+			if len(parts[i]) == 0 {
+				continue
+			}
+			av := strings.Split(parts[i], "=", 2) // Attribute=Value
 			if len(av) == 1 {
 				arg := av[0]
 				switch strings.ToLower(arg) {
@@ -152,7 +168,7 @@ func readSetCookies(h map[string][]string) *Cookies {
 func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 	lines := make([]string, 0, len(*kk))
 	for n, c := range *kk {
-		var value string = textproto.CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
+		var value string = CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
 		var version string
 		if c.Version > 1 {
 			version = "Version=" + strconv.Uitoa(c.Version) + "; "
@@ -209,8 +225,8 @@ func readCookies(h map[string][]string) *Cookies {
 	}
 	var unparsed_lines []string = make([]string, 0, 3)
 	for _, line := range lines {
-		parts := strings.Split(line, ";", -1)
-		if len(parts) == 0 {
+		parts := strings.Split(strings.TrimSpace(line), ";", -1)
+		if len(parts) == 1 && parts[0] == "" {
 			continue
 		}
 		// Per-line attributes
@@ -221,6 +237,10 @@ func readCookies(h map[string][]string) *Cookies {
 		var comment string
 		var httponly bool
 		for i := 1; i < len(parts); i++ {
+			parts[i] = strings.TrimSpace(parts[i])
+			if len(parts[i]) == 0 {
+				continue
+			}
 			av := strings.Split(strings.TrimSpace(parts[i]), "=", 2) // Attribute=Value
 			if len(av) == 1 {
 				arg := av[0]
@@ -287,7 +307,7 @@ func readCookies(h map[string][]string) *Cookies {
 func (kk *Cookies) writeCookies(w io.Writer) os.Error {
 	lines := make([]string, 0, len(*kk))
 	for n, c := range *kk {
-		var value string = textproto.CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
+		var value string = CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
 		var version string
 		if c.Version > 1 {
 			version = "$Version=" + strconv.Uitoa(c.Version) + "; "
