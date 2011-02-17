@@ -19,18 +19,18 @@ import (
 // HTTP Request headers. In this case, only the Value@ field is
 // significant.
 type Cookie struct {
-	Value           string
-	Path            string
-	Domain          string
-	Comment         string
-	Version         uint
-	Expires         time.Time
-	ExpiresRaw      string
-	MaxAge          int64	// Max age in nanoseconds
-	Secure          bool
-	HttpOnly        bool
-	Raw             string
-	Unparsed        []string // Raw text of unparsed attribute-value pairs
+	Value      string
+	Path       string
+	Domain     string
+	Comment    string
+	Version    uint
+	Expires    time.Time
+	ExpiresRaw string
+	MaxAge     int64 // Max age in nanoseconds
+	Secure     bool
+	HttpOnly   bool
+	Raw        string
+	Unparsed   []string // Raw text of unparsed attribute-value pairs
 }
 
 // Cookies{} represents the collection of cookies found in a header.
@@ -184,9 +184,9 @@ func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 		if len(c.Comment) > 0 {
 			comment = "Comment=" + URLEscape(c.Comment) + "; "
 		}
-		lines = append(lines, "Set-Cookie: " +
-			value + version + domain + path + expires +
-			maxage + secure + httponly + comment + "\r\n")
+		lines = append(lines, "Set-Cookie: "+
+			value+version+domain+path+expires+
+			maxage+secure+httponly+comment+"\r\n")
 	}
 	sort.SortStrings(lines)
 	for _, l := range lines {
@@ -307,8 +307,8 @@ func (kk *Cookies) writeCookies(w io.Writer) os.Error {
 		if len(c.Comment) > 0 {
 			comment = "$Comment=" + URLEscape(c.Comment) + "; "
 		}
-		lines = append(lines, "Cookie: " + 
-			version + value + domain + path + httponly + comment + "\r\n")
+		lines = append(lines, "Cookie: "+
+			version+value+domain+path+httponly+comment+"\r\n")
 	}
 	sort.SortStrings(lines)
 	for _, l := range lines {

@@ -36,7 +36,7 @@ func NewBodyFile(filename string) (io.ReadCloser, os.Error) {
 }
 
 func NewResponseFile(filename string) (*Response, os.Error) {
-	b,err := NewBodyFile(filename)
+	b, err := NewBodyFile(filename)
 	if err != nil {
 		return NewResponse404(), err
 	}

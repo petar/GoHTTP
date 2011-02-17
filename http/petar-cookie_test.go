@@ -5,12 +5,12 @@
 package http
 
 import (
-/*
-	"bufio"
-	"bytes"
-	"fmt"
-	"io"
-	"reflect"
+	/*
+		"bufio"
+		"bytes"
+		"fmt"
+		"io"
+		"reflect"
 	*/
 	"os"
 	"testing"
@@ -19,16 +19,16 @@ import (
 /* extractSetCookie test */
 
 type extractSetCookieTest struct {
-	Raw  string
+	Raw    string
 	Parsed Cookies
 }
 
-var extractSetCookieTests = []extractSetCookieTest{ }
+var extractSetCookieTests = []extractSetCookieTest{}
 
 func TestOK(t *testing.T) {
 	kk := &Cookies{
-		"aha": Cookie{ Value: "toto", HttpOnly: true, },
-		"bibo": Cookie{ Value: "doce", HttpOnly: true, },
+		"aha":  Cookie{Value: "toto", HttpOnly: true},
+		"bibo": Cookie{Value: "doce", HttpOnly: true},
 	}
 	if err := kk.writeSetCookies(os.Stdout); err != nil {
 		t.Errorf("** %s\n", err)
