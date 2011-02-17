@@ -6,6 +6,7 @@ package http
 
 import (
 	"io"
+	"net/textproto"
 	"os"
 	"sort"
 	"strconv"
@@ -38,14 +39,14 @@ type Cookie struct {
 // For Request headers, only the Value@ field of Cookie{} is significant.
 type Cookies map[string]Cookie
 
-// extractSetCookies() parses all "Set-Cookie" values from
+// readSetCookies() parses all "Set-Cookie" values from
 // the header h#, removes the successfully parsed values from the 
 // "Set-Cookie" key in h# and returns the parsed Cookie{}s.
-func extractSetCookies(h map[string][]string) *Cookies {
-	cookies := new(Cookies)
+func readSetCookies(h map[string][]string) *Cookies {
+	cookies := make(Cookies)
 	lines, ok := h["Set-Cookie"]
 	if !ok {
-		return cookies
+		return &cookies
 	}
 	unparsed_lines := make([]string, 0, 3)
 	for _, line := range lines {
@@ -134,14 +135,14 @@ func extractSetCookies(h map[string][]string) *Cookies {
 				}
 			}
 		} // Cookie attribute-value iteration
-		(*cookies)[name] = c
+		cookies[name] = c
 	} // header "Set-Cookie" value iteration
 	if len(unparsed_lines) > 0 {
 		h["Set-Cookie"] = unparsed_lines
 	} else {
 		h["Set-Cookie"] = nil, false
 	}
-	return cookies
+	return &cookies
 }
 
 // writeSetCookies() writes the wire representation of the set-cookies
@@ -151,7 +152,7 @@ func extractSetCookies(h map[string][]string) *Cookies {
 func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 	lines := make([]string, 0, len(*kk))
 	for n, c := range *kk {
-		var value string = n + "=" + URLEscape(c.Value) + "; "
+		var value string = textproto.CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
 		var version string
 		if c.Version > 1 {
 			version = "Version=" + strconv.Uitoa(c.Version) + "; "
@@ -197,10 +198,10 @@ func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 	return nil
 }
 
-// extractCookies() parses all "Cookie" values from
+// readCookies() parses all "Cookie" values from
 // the header h#, removes the successfully parsed values from the 
 // "Cookie" key in h# and returns the parsed Cookie{}s.
-func extractCookies(h map[string][]string) *Cookies {
+func readCookies(h map[string][]string) *Cookies {
 	cookies := new(Cookies)
 	lines, ok := h["Cookie"]
 	if !ok {
@@ -286,7 +287,7 @@ func extractCookies(h map[string][]string) *Cookies {
 func (kk *Cookies) writeCookies(w io.Writer) os.Error {
 	lines := make([]string, 0, len(*kk))
 	for n, c := range *kk {
-		var value string = n + "=" + URLEscape(c.Value) + "; "
+		var value string = textproto.CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
 		var version string
 		if c.Version > 1 {
 			version = "$Version=" + strconv.Uitoa(c.Version) + "; "
