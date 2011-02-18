@@ -133,7 +133,7 @@ type Request struct {
 	// Trailer maps trailer keys to values.  Like for Header, if the
 	// response has multiple trailer lines with the same key, they will be
 	// concatenated, delimited by commas.
-	Trailer map[string][]string
+	Trailer Header
 }
 
 // ProtoAtLeast returns whether the HTTP protocol used
@@ -146,11 +146,11 @@ func (r *Request) ProtoAtLeast(major, minor int) bool {
 // MultipartReader returns a MIME multipart reader if this is a
 // multipart/form-data POST request, else returns nil and an error.
 func (r *Request) MultipartReader() (multipart.Reader, os.Error) {
-	v_, ok := r.Header["Content-Type"]
-	if !ok {
+	v := r.Header.Get("Content-Type")
+	if v == "" {
 		return nil, ErrNotMultipart
 	}
-	d, params := mime.ParseMediaType(v_[0])
+	d, params := mime.ParseMediaType(v)
 	if d != "multipart/form-data" {
 		return nil, ErrNotMultipart
 	}
@@ -420,27 +420,18 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 	// the same.  In the second case, any Host line is ignored.
 	req.Host = req.URL.Host
 	if req.Host == "" {
-		host_, ok := req.Header["Host"]
-		if ok {
-			req.Host = host_[0]
-		}
+		req.Host = req.Header.Get("Host")
 	}
-	req.Header["Host"] = nil, false
+	req.Header.Del("Host")
 
 	fixPragmaCacheControl(req.Header)
 
 	// Pull out useful fields as a convenience to clients.
-	referer_, ok := req.Header["Referer"]
-	if ok {
-		req.Referer = referer_[0]
-	}
-	req.Header["Referer"] = nil, false
+	req.Referer = req.Header.Get("Referer")
+	req.Header.Del("Referer")
 
-	useragent_, ok := req.Header["User-Agent"]
-	if ok {
-		req.UserAgent = useragent_[0]
-	}
-	req.Header["User-Agent"] = nil, false
+	req.UserAgent = req.Header.Get("User-Agent")
+	req.Header.Del("User-Agent")
 
 	// TODO: Parse specific header values:
 	//	Accept
@@ -526,11 +517,7 @@ func (r *Request) ParseForm() (err os.Error) {
 		if r.Body == nil {
 			return os.ErrorString("missing form body")
 		}
-		ct_, ok := r.Header["Content-Type"]
-		var ct string
-		if ok {
-			ct = ct_[0]
-		}
+		ct := r.Header.Get("Content-Type")
 		switch strings.Split(ct, ";", 2)[0] {
 		case "text/plain", "application/x-www-form-urlencoded", "":
 			b, e := ioutil.ReadAll(r.Body)
@@ -558,24 +545,19 @@ func (r *Request) FormValue(key string) string {
 	if r.Form == nil {
 		r.ParseForm()
 	}
-	if vs, ok := r.Form[key]; ok {
+	if vs := r.Form[key]; len(vs) > 0 {
 		return vs[0]
 	}
 	return ""
 }
 
 func (r *Request) expectsContinue() bool {
-	expectation_, ok := r.Header["Expect"]
-	return ok && strings.ToLower(expectation_[0]) == "100-continue"
+	return strings.ToLower(r.Header.Get("Expect")) == "100-continue"
 }
 
 func (r *Request) wantsHttp10KeepAlive() bool {
 	if r.ProtoMajor != 1 || r.ProtoMinor != 0 {
 		return false
 	}
-	value_, exists := r.Header["Connection"]
-	if !exists {
-		return false
-	}
-	return strings.Contains(strings.ToLower(value_[0]), "keep-alive")
+	return strings.Contains(strings.ToLower(r.Header.Get("Connection")), "keep-alive")
 }

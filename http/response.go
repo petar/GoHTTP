@@ -131,22 +131,12 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 //	Pragma: no-cache
 // like
 //	Cache-Control: no-cache
-func fixPragmaCacheControl(header map[string][]string) {
+func fixPragmaCacheControl(header Header) {
 	if hp, ok := header["Pragma"]; ok && len(hp) > 0 && hp[0] == "no-cache" {
 		if _, presentcc := header["Cache-Control"]; !presentcc {
 			header["Cache-Control"] = []string{"no-cache"}
 		}
 	}
-}
-
-// GetFirstHeaderValue returns the first element of header[key],
-// or "" otherwise.
-func GetFirstValue(header map[string][]string, key string) string {
-	v_, ok := header[key]
-	if !ok {
-		return ""
-	}
-	return v_[0]
 }
 
 // ProtoAtLeast returns whether the HTTP protocol used

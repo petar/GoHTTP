@@ -34,7 +34,7 @@ var reqWriteTests = []reqWriteTest{
 			Proto:      "HTTP/1.1",
 			ProtoMajor: 1,
 			ProtoMinor: 1,
-			Header: map[string][]string{
+			Header: Header{
 				"Accept":           {"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"},
 				"Accept-Charset":   {"ISO-8859-1,utf-8;q=0.7,*;q=0.7"},
 				"Accept-Encoding":  {"gzip,deflate"},

@@ -34,7 +34,7 @@ var respTests = []respTest{
 			ProtoMajor:    1,
 			ProtoMinor:    0,
 			RequestMethod: "GET",
-			Header: map[string][]string{
+			Header: Header{
 				"Connection": {"close"}, // TODO(rsc): Delete?
 			},
 			Close:         true,
@@ -100,7 +100,7 @@ var respTests = []respTest{
 			ProtoMajor:    1,
 			ProtoMinor:    0,
 			RequestMethod: "GET",
-			Header: map[string][]string{
+			Header: Header{
 				"Connection":     {"close"}, // TODO(rsc): Delete?
 				"Content-Length": {"10"},    // TODO(rsc): Delete?
 			},

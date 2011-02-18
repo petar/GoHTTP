@@ -75,8 +75,8 @@ func TestQuery(t *testing.T) {
 func TestPostQuery(t *testing.T) {
 	req := &Request{Method: "POST"}
 	req.URL, _ = ParseURL("http://www.google.com/search?q=foo&q=bar&both=x")
-	req.Header = map[string][]string{
-		"Content-Type": []string{"application/x-www-form-urlencoded; boo!"},
+	req.Header = Header{
+		"Content-Type": {"application/x-www-form-urlencoded; boo!"},
 	}
 	req.Body = nopCloser{strings.NewReader("z=post&both=y")}
 	if q := req.FormValue("q"); q != "foo" {
@@ -97,11 +97,11 @@ type parseContentTypeTest struct {
 }
 
 var parseContentTypeTests = []parseContentTypeTest{
-	{contentType: stringMap{"Content-Type": []string{"text/plain"}}},
+	{contentType: stringMap{"Content-Type": {"text/plain"}}},
 	{contentType: stringMap{}}, // Non-existent keys are not placed. The value nil is illegal.
-	{contentType: stringMap{"Content-Type": []string{"text/plain; boundary="}}},
+	{contentType: stringMap{"Content-Type": {"text/plain; boundary="}}},
 	{
-		contentType: stringMap{"Content-Type": []string{"application/unknown"}},
+		contentType: stringMap{"Content-Type": {"application/unknown"}},
 		error:       true,
 	},
 }
@@ -126,7 +126,7 @@ func TestPostContentTypeParsing(t *testing.T) {
 func TestMultipartReader(t *testing.T) {
 	req := &Request{
 		Method: "POST",
-		Header: textproto.MIMEHeader{"Content-Type": []string{`multipart/form-data; boundary="foo123"`}},
+		Header: textproto.MIMEHeader{"Content-Type": {`multipart/form-data; boundary="foo123"`}},
 		Body:   nopCloser{new(bytes.Buffer)},
 	}
 	multipart, err := req.MultipartReader()
@@ -134,7 +134,7 @@ func TestMultipartReader(t *testing.T) {
 		t.Errorf("expected multipart; error: %v", err)
 	}
 
-	req.Header = textproto.MIMEHeader{"Content-Type": []string{"text/plain"}}
+	req.Header = textproto.MIMEHeader{"Content-Type": {"text/plain"}}
 	multipart, err = req.MultipartReader()
 	if multipart != nil {
 		t.Errorf("unexpected multipart for text/plain")

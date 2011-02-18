@@ -87,7 +87,7 @@ func send(req *Request) (resp *Response, err os.Error) {
 		if req.Header == nil {
 			req.Header = make(Header)
 		}
-		req.Header.Set("Authorization", "Basic " + string(encoded))
+		req.Header.Set("Authorization", "Basic "+string(encoded))
 	}
 
 	var conn io.ReadWriteCloser

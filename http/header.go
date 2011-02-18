@@ -13,20 +13,20 @@ type Header textproto.MIMEHeader
 // Add adds the key, value pair to the header.
 // It appends to any existing values associated with key.
 func (h Header) Add(key, value string) {
-	textproto.MIMEHeader(h).Add(key, value)	
+	textproto.MIMEHeader(h).Add(key, value)
 }
 
 // Add adds the key, value pair to the header.
 // It appends to any existing values associated with key.
 func (h Header) AddNewLine(key, value string) {
-	textproto.MIMEHeader(h).AddNewLine(key, value)	
+	textproto.MIMEHeader(h).AddNewLine(key, value)
 }
 
 // Set sets the header entries associated with key to
 // the single element value.  It replaces any existing
 // values associated with key.
 func (h Header) Set(key, value string) {
-	textproto.MIMEHeader(h).Set(key, value)	
+	textproto.MIMEHeader(h).Set(key, value)
 }
 
 // Get gets the first value associated with the given key.
@@ -34,12 +34,12 @@ func (h Header) Set(key, value string) {
 // Get is a convenience method.  For more complex queries,
 // access the map directly.
 func (h Header) Get(key string) string {
-	return textproto.MIMEHeader(h).Get(key)	
+	return textproto.MIMEHeader(h).Get(key)
 }
 
 // Del deletes the values associated with key.
 func (h Header) Del(key string) {
-	textproto.MIMEHeader(h).Del(key)	
+	textproto.MIMEHeader(h).Del(key)
 }
 
 // CanonicalHeaderKey returns the canonical format of the

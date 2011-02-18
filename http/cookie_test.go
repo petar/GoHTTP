@@ -20,7 +20,7 @@ type writeSetCookiesTest struct {
 
 var writeSetCookiesTests = []writeSetCookiesTest{
 	{
-		Cookies{"cookie-1": Cookie{ Value: "v$1", MaxAge: -1 }}, 
+		Cookies{"cookie-1": Cookie{Value: "v$1", MaxAge: -1}},
 		"Set-Cookie: Cookie-1=v%241; \r\n",
 	},
 }
@@ -46,7 +46,7 @@ type writeCookiesTest struct {
 
 var writeCookiesTests = []writeCookiesTest{
 	{
-		Cookies{"cookie-1": Cookie{ Value: "v$1", MaxAge: -1 }}, 
+		Cookies{"cookie-1": Cookie{Value: "v$1", MaxAge: -1}},
 		"Cookie: Cookie-1=v%241; \r\n",
 	},
 }
@@ -73,7 +73,7 @@ type readSetCookiesTest struct {
 var readSetCookiesTests = []readSetCookiesTest{
 	{
 		textproto.MIMEHeader{"Set-Cookie": {"Cookie-1=v%241; "}},
-		Cookies{"Cookie-1": Cookie{ Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; " }}, 
+		Cookies{"Cookie-1": Cookie{Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
 	},
 }
 
@@ -97,7 +97,7 @@ type readCookiesTest struct {
 var readCookiesTests = []readCookiesTest{
 	{
 		textproto.MIMEHeader{"Cookie": {"Cookie-1=v%241; "}},
-		Cookies{"Cookie-1": Cookie{ Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; " }}, 
+		Cookies{"Cookie-1": Cookie{Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
 	},
 }
 

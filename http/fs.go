@@ -104,8 +104,7 @@ func serveFile(w ResponseWriter, r *Request, name string, redirect bool) {
 		}
 	}
 
-	if t, _ := time.Parse(TimeFormat, r.Header.Get("If-Modified-Since")); 
-		t != nil && d.Mtime_ns/1e9 <= t.Seconds() {
+	if t, _ := time.Parse(TimeFormat, r.Header.Get("If-Modified-Since")); t != nil && d.Mtime_ns/1e9 <= t.Seconds() {
 		w.WriteHeader(StatusNotModified)
 		return
 	}
