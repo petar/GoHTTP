@@ -39,17 +39,10 @@ var ParseRangeTests = []struct {
 	{"bytes=500-700,601-999", 10000, []httpRange{{500, 201}, {601, 399}}},
 }
 
-func str2astr(s string) []string {
-	if s == "" {
-		return nil
-	}
-	return []string{s}
-}
-
 func TestParseRange(t *testing.T) {
 	for _, test := range ParseRangeTests {
 		r := test.r
-		ranges, err := parseRange(str2astr(test.s), test.length)
+		ranges, err := parseRange(test.s, test.length)
 		if err != nil && r != nil {
 			t.Errorf("parseRange(%q) returned error %q", test.s, err)
 		}
@@ -145,7 +138,8 @@ func TestServeFile(t *testing.T) {
 		if rt.r == "" {
 			h = ""
 		}
-		if r.Header.Get("Content-Range") != h {
+		cr := r.Header.Get("Content-Range")
+		if cr != h {
 			t.Errorf("header mismatch: range=%q: got %q, want %q", rt.r, cr, h)
 		}
 		if !equal(body, file[rt.start:rt.end]) {

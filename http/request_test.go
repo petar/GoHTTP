@@ -6,7 +6,6 @@ package http
 
 import (
 	"bytes"
-	"net/textproto"
 	"reflect"
 	"regexp"
 	"strings"
@@ -110,7 +109,7 @@ func TestPostContentTypeParsing(t *testing.T) {
 	for i, test := range parseContentTypeTests {
 		req := &Request{
 			Method: "POST",
-			Header: textproto.MIMEHeader(test.contentType),
+			Header: Header(test.contentType),
 			Body:   nopCloser{bytes.NewBufferString("body")},
 		}
 		err := req.ParseForm()
@@ -126,7 +125,7 @@ func TestPostContentTypeParsing(t *testing.T) {
 func TestMultipartReader(t *testing.T) {
 	req := &Request{
 		Method: "POST",
-		Header: textproto.MIMEHeader{"Content-Type": {`multipart/form-data; boundary="foo123"`}},
+		Header: Header{"Content-Type": {`multipart/form-data; boundary="foo123"`}},
 		Body:   nopCloser{new(bytes.Buffer)},
 	}
 	multipart, err := req.MultipartReader()
@@ -134,7 +133,7 @@ func TestMultipartReader(t *testing.T) {
 		t.Errorf("expected multipart; error: %v", err)
 	}
 
-	req.Header = textproto.MIMEHeader{"Content-Type": {"text/plain"}}
+	req.Header = Header{"Content-Type": {"text/plain"}}
 	multipart, err = req.MultipartReader()
 	if multipart != nil {
 		t.Errorf("unexpected multipart for text/plain")
