@@ -105,7 +105,7 @@ func TestReadCookies(t *testing.T) {
 	for i, tt := range readCookiesTests {
 		c := readCookies(tt.Header)
 		if !reflect.DeepEqual(map[string]Cookie(*c), map[string]Cookie(tt.Cookies)) {
-			t.Errorf("#%d readSetCookies: have\n%#v\nwant\n%#v\n", i, (*c), tt.Cookies)
+			t.Errorf("#%d readCookies: have\n%#v\nwant\n%#v\n", i, (*c), tt.Cookies)
 			continue
 		}
 	}

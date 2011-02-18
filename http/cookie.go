@@ -60,7 +60,7 @@ func readSetCookies(h map[string][]string) *Cookies {
 	if !ok {
 		return &cookies
 	}
-	unparsed_lines := make([]string, 0, 3)
+	unparsedLines := make([]string, 0, 3)
 	for _, line := range lines {
 		parts := strings.Split(strings.TrimSpace(line), ";", -1)
 		if len(parts) == 1 && parts[0] == "" {
@@ -68,17 +68,17 @@ func readSetCookies(h map[string][]string) *Cookies {
 		}
 		nv := strings.Split(strings.TrimSpace(parts[0]), "=", 2) // Name=Value
 		if len(nv) != 2 {
-			unparsed_lines = append(unparsed_lines, line)
+			unparsedLines = append(unparsedLines, line)
 			continue
 		}
 		name, err := URLUnescape(nv[0])
 		if err != nil {
-			unparsed_lines = append(unparsed_lines, line)
+			unparsedLines = append(unparsedLines, line)
 			continue
 		}
 		value, err := URLUnescape(nv[1])
 		if err != nil {
-			unparsed_lines = append(unparsed_lines, line)
+			unparsedLines = append(unparsedLines, line)
 			continue
 		}
 		c := Cookie{
@@ -153,8 +153,8 @@ func readSetCookies(h map[string][]string) *Cookies {
 		} // Cookie attribute-value iteration
 		cookies[name] = c
 	} // header "Set-Cookie" value iteration
-	if len(unparsed_lines) > 0 {
-		h["Set-Cookie"] = unparsed_lines
+	if len(unparsedLines) > 0 {
+		h["Set-Cookie"] = unparsedLines
 	} else {
 		h["Set-Cookie"] = nil, false
 	}
@@ -218,25 +218,25 @@ func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 // the header h#, removes the successfully parsed values from the 
 // "Cookie" key in h# and returns the parsed Cookie{}s.
 func readCookies(h map[string][]string) *Cookies {
-	cookies := new(Cookies)
+	cookies := make(Cookies)
 	lines, ok := h["Cookie"]
 	if !ok {
-		return cookies
+		return &cookies
 	}
-	var unparsed_lines []string = make([]string, 0, 3)
+	var unparsedLines []string = make([]string, 0, 3)
 	for _, line := range lines {
 		parts := strings.Split(strings.TrimSpace(line), ";", -1)
 		if len(parts) == 1 && parts[0] == "" {
 			continue
 		}
 		// Per-line attributes
-		var line_cookies = make(map[string]string)
+		var lineCookies = make(map[string]string)
 		var version uint
 		var path string
 		var domain string
 		var comment string
 		var httponly bool
-		for i := 1; i < len(parts); i++ {
+		for i := 0; i < len(parts); i++ {
 			parts[i] = strings.TrimSpace(parts[i])
 			if len(parts[i]) == 0 {
 				continue
@@ -272,32 +272,33 @@ func readCookies(h map[string][]string) *Cookies {
 				case "$httponly":
 					httponly = true
 				default:
-					line_cookies[arg0] = arg1
+					lineCookies[arg0] = arg1
 				}
 			}
 		} // attribute-value iteration
-		if len(line_cookies) == 0 {
-			unparsed_lines = append(unparsed_lines, line)
+		if len(lineCookies) == 0 {
+			unparsedLines = append(unparsedLines, line)
 		}
-		for n, v := range line_cookies {
-			(*cookies)[n] = Cookie{
+		for n, v := range lineCookies {
+			cookies[n] = Cookie{
 				Value:    v,
 				Path:     path,
 				Domain:   domain,
 				Comment:  comment,
 				Version:  version,
 				HttpOnly: httponly,
+				MaxAge:   -1,
 				Raw:      line,
 			}
 		}
 	} // header "Cookie" line iteration
 
-	if len(unparsed_lines) > 0 {
-		h["Cookie"] = unparsed_lines
+	if len(unparsedLines) > 0 {
+		h["Cookie"] = unparsedLines
 	} else {
 		h["Cookie"] = nil, false
 	}
-	return cookies
+	return &cookies
 }
 
 // writeCookies() writes the wire representation of the cookies
