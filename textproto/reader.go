@@ -419,8 +419,6 @@ func (r *Reader) ReadDotLines() ([]string, os.Error) {
 //		"Long-Key": []string{"Even Longer Value"},
 //	}
 //
-// TODO(petar): Should this method perhaps split values at commas
-// and place the different values in separate []string cells?
 func (r *Reader) ReadMIMEHeader() (MIMEHeader, os.Error) {
 	m := make(MIMEHeader)
 	for {

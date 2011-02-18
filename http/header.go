@@ -12,12 +12,6 @@ type Header textproto.MIMEHeader
 
 // Add adds the key, value pair to the header.
 // It appends to any existing values associated with key.
-func (h Header) Add(key, value string) {
-	textproto.MIMEHeader(h).Add(key, value)
-}
-
-// Add adds the key, value pair to the header.
-// It appends to any existing values associated with key.
 func (h Header) AddNewLine(key, value string) {
 	textproto.MIMEHeader(h).AddNewLine(key, value)
 }
