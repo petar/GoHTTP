@@ -90,11 +90,47 @@ func send(req *Request) (resp *Response, err os.Error) {
 		req.Header.Set("Authorization", "Basic "+string(encoded))
 	}
 
-	var conn io.ReadWriteCloser
-	if req.URL.Scheme == "http" {
-		conn, err = net.Dial("tcp", "", addr)
+	var proxyURL *URL
+	proxyAuth := ""
+	proxy := ""
+	if !matchNoProxy(addr) {
+		proxy = os.Getenv("HTTP_PROXY")
+		if proxy == "" {
+			proxy = os.Getenv("http_proxy")
+		}
+	}
+
+	if proxy != "" {
+		proxyURL, err = ParseRequestURL(proxy)
 		if err != nil {
-			return nil, err
+			return nil, os.ErrorString("invalid proxy address")
+		}
+		if proxyURL.Host == "" {
+			proxyURL, err = ParseRequestURL("http://" + proxy)
+			if err != nil {
+				return nil, os.ErrorString("invalid proxy address")
+			}
+		}
+		addr = proxyURL.Host
+		proxyInfo := proxyURL.RawUserinfo
+		if proxyInfo != "" {
+			enc := base64.URLEncoding
+			encoded := make([]byte, enc.EncodedLen(len(proxyInfo)))
+			enc.Encode(encoded, []byte(proxyInfo))
+			proxyAuth = "Basic " + string(encoded)
+		}
+	}
+
+	// Connect to server or proxy.
+	conn, err := net.Dial("tcp", "", addr)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.URL.Scheme == "http" {
+		// Include proxy http header if needed.
+		if proxyAuth != "" {
+			req.Header.Set("Proxy-Authorization", proxyAuth)
 		}
 	} else { // https
 		conn, err = tls.Dial("tcp", "", addr, nil)
