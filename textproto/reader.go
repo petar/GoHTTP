@@ -415,8 +415,8 @@ func (r *Reader) ReadDotLines() ([]string, os.Error) {
 // Given that input, ReadMIMEHeader returns the map:
 //
 //	map[string][]string{
-//		"My-Key": []string{"Value 1", "Value 2"},
-//		"Long-Key": []string{"Even Longer Value"},
+//		"My-Key": {"Value 1", "Value 2"},
+//		"Long-Key": {"Even Longer Value"},
 //	}
 //
 func (r *Reader) ReadMIMEHeader() (MIMEHeader, os.Error) {

@@ -207,18 +207,18 @@ func (resp *Response) Write(w io.Writer) os.Error {
 }
 
 func writeSortedKeyValue(w io.Writer, kvm map[string][]string, exclude map[string]bool) os.Error {
-	kva := make([]string, 0, len(kvm))
-	for k, vv := range kvm {
+	keys := make([]string, 0, len(kvm))
+	for k := range kvm {
 		if !exclude[k] {
-			for _, v := range vv {
-				kva = append(kva, fmt.Sprint(k+": "+v+"\r\n"))
-			}
+			keys = append(keys, k)
 		}
 	}
-	sort.SortStrings(kva)
-	for _, l := range kva {
-		if _, err := io.WriteString(w, l); err != nil {
-			return err
+	sort.SortStrings(keys)
+	for _, k := range keys {
+		for _, v := range kvm[k] {
+			if _, err := fmt.Fprintf(w, "%s: %s\r\n", k, v); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

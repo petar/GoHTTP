@@ -6,9 +6,8 @@ package http
 
 import "net/textproto"
 
-// A Header represents the key-multivalue pairs in
-// an HTTP header.
-type Header textproto.MIMEHeader
+// A Header represents the key-value pairs in an HTTP header.
+type Header map[string][]string
 
 // Add adds the key, value pair to the header.
 // It appends to any existing values associated with key.
@@ -37,7 +36,7 @@ func (h Header) Del(key string) {
 }
 
 // CanonicalHeaderKey returns the canonical format of the
-// MIME header key s.  The canonicalization converts the first
+// header key s.  The canonicalization converts the first
 // letter and any letter following a hyphen to upper case;
 // the rest are converted to lowercase.  For example, the
 // canonical key for "accept-encoding" is "Accept-Encoding".

@@ -21,7 +21,7 @@ type transferWriter struct {
 	ContentLength    int64
 	Close            bool
 	TransferEncoding []string
-	Trailer          map[string][]string
+	Trailer          Header
 }
 
 func newTransferWriter(r interface{}) (t *transferWriter, err os.Error) {
@@ -159,7 +159,7 @@ func (t *transferWriter) WriteBody(w io.Writer) (err os.Error) {
 
 type transferReader struct {
 	// Input
-	Header        map[string][]string
+	Header        Header
 	StatusCode    int
 	RequestMethod string
 	ProtoMajor    int
@@ -169,7 +169,7 @@ type transferReader struct {
 	ContentLength    int64
 	TransferEncoding []string
 	Close            bool
-	Trailer          map[string][]string
+	Trailer          Header
 }
 
 // bodyAllowedForStatus returns whether a given response status code
@@ -289,7 +289,7 @@ func readTransfer(msg interface{}, r *bufio.Reader) (err os.Error) {
 func chunked(te []string) bool { return len(te) > 0 && te[0] == "chunked" }
 
 // Sanitize transfer encoding
-func fixTransferEncoding(header map[string][]string) ([]string, os.Error) {
+func fixTransferEncoding(header Header) ([]string, os.Error) {
 	raw, present := header["Transfer-Encoding"]
 	if !present {
 		return nil, nil

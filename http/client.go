@@ -133,15 +133,44 @@ func send(req *Request) (resp *Response, err os.Error) {
 			req.Header.Set("Proxy-Authorization", proxyAuth)
 		}
 	} else { // https
-		conn, err = tls.Dial("tcp", "", addr, nil)
-		if err != nil {
+		if proxyURL != nil {
+			// Ask proxy for direct connection to server.
+			// addr defaults above to ":https" but we need to use numbers
+			addr = req.URL.Host
+			if !hasPort(addr) {
+				addr += ":443"
+			}
+			fmt.Fprintf(conn, "CONNECT %s HTTP/1.1\r\n", addr)
+			fmt.Fprintf(conn, "Host: %s\r\n", addr)
+			if proxyAuth != "" {
+				fmt.Fprintf(conn, "Proxy-Authorization: %s\r\n", proxyAuth)
+			}
+			fmt.Fprintf(conn, "\r\n")
+
+			// Read response.
+			// Okay to use and discard buffered reader here, because
+			// TLS server will not speak until spoken to.
+			br := bufio.NewReader(conn)
+			resp, err := ReadResponse(br, "CONNECT")
+			if err != nil {
+				return nil, err
+			}
+			if resp.StatusCode != 200 {
+				f := strings.Split(resp.Status, " ", 2)
+				return nil, os.ErrorString(f[1])
+			}
+		}
+
+		// Initiate TLS and check remote host name against certificate.
+		conn = tls.Client(conn, nil)
+		if err = conn.(*tls.Conn).Handshake(); err != nil {
 			return nil, err
 		}
 		h := req.URL.Host
 		if hasPort(h) {
-			h = h[0:strings.LastIndex(h, ":")]
+			h = h[:strings.LastIndex(h, ":")]
 		}
-		if err := conn.(*tls.Conn).VerifyHostname(h); err != nil {
+		if err = conn.(*tls.Conn).VerifyHostname(h); err != nil {
 			return nil, err
 		}
 	}
