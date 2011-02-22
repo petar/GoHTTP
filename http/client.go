@@ -292,11 +292,7 @@ func Head(url string) (r *Response, err os.Error) {
 	if req.URL, err = ParseURL(url); err != nil {
 		return
 	}
-	url = req.URL.String()
-	if r, err = send(&req); err != nil {
-		return
-	}
-	return
+	return send(&req)
 }
 
 type nopCloser struct {
