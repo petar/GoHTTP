@@ -53,10 +53,10 @@ var reqWriteTests = []reqWriteTest{
 		"GET http://www.techcrunch.com/ HTTP/1.1\r\n" +
 			"Host: www.techcrunch.com\r\n" +
 			"User-Agent: Fake\r\n" +
+			"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" +
 			"Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7\r\n" +
 			"Accept-Encoding: gzip,deflate\r\n" +
 			"Accept-Language: en-us,en;q=0.5\r\n" +
-			"Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n" +
 			"Keep-Alive: 300\r\n" +
 			"Proxy-Connection: keep-alive\r\n\r\n",
 	},

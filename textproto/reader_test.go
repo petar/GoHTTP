@@ -130,7 +130,7 @@ func TestReadDotBytes(t *testing.T) {
 func TestReadMIMEHeader(t *testing.T) {
 	r := reader("my-key: Value 1  \r\nLong-key: Even \n Longer Value\r\nmy-Key: Value 2\r\n\n")
 	m, err := r.ReadMIMEHeader()
-	want := map[string][]string{
+	want := MIMEHeader{
 		"My-Key":   {"Value 1", "Value 2"},
 		"Long-Key": {"Even Longer Value"},
 	}
