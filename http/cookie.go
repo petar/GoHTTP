@@ -54,7 +54,7 @@ func (kk Cookies) Get(key string) string {
 // readSetCookies() parses all "Set-Cookie" values from
 // the header h#, removes the successfully parsed values from the 
 // "Set-Cookie" key in h# and returns the parsed Cookie{}s.
-func readSetCookies(h map[string][]string) *Cookies {
+func readSetCookies(h Header) *Cookies {
 	cookies := make(Cookies)
 	lines, ok := h["Set-Cookie"]
 	if !ok {
@@ -217,7 +217,7 @@ func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 // readCookies() parses all "Cookie" values from
 // the header h#, removes the successfully parsed values from the 
 // "Cookie" key in h# and returns the parsed Cookie{}s.
-func readCookies(h map[string][]string) *Cookies {
+func readCookies(h Header) *Cookies {
 	cookies := make(Cookies)
 	lines, ok := h["Cookie"]
 	if !ok {

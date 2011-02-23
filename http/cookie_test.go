@@ -6,7 +6,6 @@ package http
 
 import (
 	"bytes"
-	"net/textproto"
 	"reflect"
 	"testing"
 )
@@ -66,13 +65,13 @@ func TestWriteCookies(t *testing.T) {
 /* readSetCookies test */
 
 type readSetCookiesTest struct {
-	Header textproto.MIMEHeader
+	Header Header
 	Cookies
 }
 
 var readSetCookiesTests = []readSetCookiesTest{
 	{
-		textproto.MIMEHeader{"Set-Cookie": {"Cookie-1=v%241; "}},
+		Header{"Set-Cookie": {"Cookie-1=v%241; "}},
 		Cookies{"Cookie-1": Cookie{Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
 	},
 }
@@ -90,13 +89,13 @@ func TestReadSetCookies(t *testing.T) {
 /* readCookies test */
 
 type readCookiesTest struct {
-	Header textproto.MIMEHeader
+	Header Header
 	Cookies
 }
 
 var readCookiesTests = []readCookiesTest{
 	{
-		textproto.MIMEHeader{"Cookie": {"Cookie-1=v%241; "}},
+		Header{"Cookie": {"Cookie-1=v%241; "}},
 		Cookies{"Cookie-1": Cookie{Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
 	},
 }
