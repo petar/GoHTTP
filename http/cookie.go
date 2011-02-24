@@ -13,9 +13,9 @@ import (
 	"time"
 )
 
-// Cookie{} represents a parsed RFC 2109 "Set-Cookie" line in HTTP
+// Cookie represents a parsed RFC 2109 "Set-Cookie" line in HTTP
 // Response headers, extended with the HttpOnly attribute.
-// Cookie{} is also used to represent parsed "Cookie" lines in
+// Cookie is also used to represent parsed "Cookie" lines in
 // HTTP Request headers. In this case, only the Value@ field is
 // significant.
 type Cookie struct {
@@ -25,7 +25,7 @@ type Cookie struct {
 	Comment    string
 	Version    uint
 	Expires    time.Time
-	ExpiresRaw string
+	RawExpires string
 	MaxAge     int64 // Max age in nanoseconds
 	Secure     bool
 	HttpOnly   bool
@@ -33,9 +33,9 @@ type Cookie struct {
 	Unparsed   []string // Raw text of unparsed attribute-value pairs
 }
 
-// Cookies{} represents the collection of cookies found in a header.
-// Individual cookies are represented by Cookie{} objects.
-// For Request headers, only the Value@ field of Cookie{} is significant.
+// Cookies represents the collection of cookies found in a header.
+// Individual cookies are represented by Cookie objects.
+// For Request headers, only the Value@ field of Cookie is significant.
 type Cookies map[string]Cookie
 
 // Get() returns the value of a cookie with the given key,
@@ -52,27 +52,18 @@ func (kk Cookies) Get(key string) string {
 }
 
 // readSetCookies() parses all "Set-Cookie" values from
-// the header h#, removes the successfully parsed values from the 
-// "Set-Cookie" key in h# and returns the parsed Cookie{}s.
+// the header h, removes the successfully parsed values from the 
+// "Set-Cookie" key in h and returns the parsed Cookies.
 func readSetCookies(h Header) *Cookies {
 	cookies := make(Cookies)
-	lines, ok := h["Set-Cookie"]
-	if !ok {
-		return &cookies
-	}
-	unparsedLines := make([]string, 0, 3)
-	for _, line := range lines {
+	var unparsedLines []string
+	for _, line := range h["Set-Cookie"] {
 		parts := strings.Split(strings.TrimSpace(line), ";", -1)
 		if len(parts) == 1 && parts[0] == "" {
 			continue
 		}
 		nv := strings.Split(strings.TrimSpace(parts[0]), "=", 2) // Name=Value
 		if len(nv) != 2 {
-			unparsedLines = append(unparsedLines, line)
-			continue
-		}
-		name, err := URLUnescape(nv[0])
-		if err != nil {
 			unparsedLines = append(unparsedLines, line)
 			continue
 		}
@@ -124,7 +115,7 @@ func readSetCookies(h Header) *Cookies {
 					}
 					c.MaxAge = 1e9 * secs
 				case "expires":
-					c.ExpiresRaw = arg1
+					c.RawExpires = arg1
 					exptime, err := time.Parse(time.RFC1123, arg1)
 					if err != nil {
 						c.Expires = time.Time{}
@@ -150,14 +141,10 @@ func readSetCookies(h Header) *Cookies {
 					c.Unparsed = append(c.Unparsed, parts[i])
 				}
 			}
-		} // Cookie attribute-value iteration
-		cookies[name] = c
-	} // header "Set-Cookie" value iteration
-	if len(unparsedLines) > 0 {
-		h["Set-Cookie"] = unparsedLines
-	} else {
-		h["Set-Cookie"] = nil, false
+		}
+		cookies[nv[0]] = c
 	}
+	h["Set-Cookie"] = unparsedLines, unparsedLines != nil
 	return &cookies
 }
 
@@ -216,7 +203,7 @@ func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 
 // readCookies() parses all "Cookie" values from
 // the header h#, removes the successfully parsed values from the 
-// "Cookie" key in h# and returns the parsed Cookie{}s.
+// "Cookie" key in h# and returns the parsed Cookies.
 func readCookies(h Header) *Cookies {
 	cookies := make(Cookies)
 	lines, ok := h["Cookie"]

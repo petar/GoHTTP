@@ -10,14 +10,11 @@ import (
 	"testing"
 )
 
-/* writeSetCookies test */
 
-type writeSetCookiesTest struct {
+var writeSetCookiesTests = []struct {
 	Cookies
 	Raw string
-}
-
-var writeSetCookiesTests = []writeSetCookiesTest{
+}{
 	{
 		Cookies{"cookie-1": Cookie{Value: "v$1", MaxAge: -1}},
 		"Set-Cookie: Cookie-1=v%241; \r\n",
@@ -36,14 +33,10 @@ func TestWriteSetCookies(t *testing.T) {
 	}
 }
 
-/* writeCookies test */
-
-type writeCookiesTest struct {
+var writeCookiesTests = []struct {
 	Cookies
 	Raw string
-}
-
-var writeCookiesTests = []writeCookiesTest{
+}{
 	{
 		Cookies{"cookie-1": Cookie{Value: "v$1", MaxAge: -1}},
 		"Cookie: Cookie-1=v%241; \r\n",
@@ -62,14 +55,10 @@ func TestWriteCookies(t *testing.T) {
 	}
 }
 
-/* readSetCookies test */
-
-type readSetCookiesTest struct {
+var readSetCookiesTests = []struct {
 	Header Header
 	Cookies
-}
-
-var readSetCookiesTests = []readSetCookiesTest{
+}{
 	{
 		Header{"Set-Cookie": {"Cookie-1=v%241; "}},
 		Cookies{"Cookie-1": Cookie{Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
@@ -86,14 +75,10 @@ func TestReadSetCookies(t *testing.T) {
 	}
 }
 
-/* readCookies test */
-
-type readCookiesTest struct {
+var readCookiesTests = []struct {
 	Header Header
 	Cookies
-}
-
-var readCookiesTests = []readCookiesTest{
+}{
 	{
 		Header{"Cookie": {"Cookie-1=v%241; "}},
 		Cookies{"Cookie-1": Cookie{Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},

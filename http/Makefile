@@ -17,6 +17,7 @@ GOFILES=\
 	server.go\
 	status.go\
 	transfer.go\
+	transport.go\
 	url.go\
 	petar-util.go\
 	petar-boiler.go\
