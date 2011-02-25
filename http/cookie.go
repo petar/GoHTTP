@@ -13,12 +13,13 @@ import (
 	"time"
 )
 
-// Cookie represents a parsed RFC 2109 "Set-Cookie" line in HTTP
+// Cookie represents a parsed RFC 2965 "Set-Cookie" line in HTTP
 // Response headers, extended with the HttpOnly attribute.
 // Cookie is also used to represent parsed "Cookie" lines in
-// HTTP Request headers. In this case, only the Value@ field is
+// HTTP Request headers. In this case, only the Value field is
 // significant.
 type Cookie struct {
+	Name       string
 	Value      string
 	Path       string
 	Domain     string
@@ -33,46 +34,31 @@ type Cookie struct {
 	Unparsed   []string // Raw text of unparsed attribute-value pairs
 }
 
-// Cookies represents the collection of cookies found in a header.
-// Individual cookies are represented by Cookie objects.
-// For Request headers, only the Value@ field of Cookie is significant.
-type Cookies map[string]Cookie
-
-// Get() returns the value of a cookie with the given key,
-// or the empty string otherwise.
-func (kk Cookies) Get(key string) string {
-	if kk == nil {
-		return ""
-	}
-	c, ok := kk[key]
-	if !ok {
-		return ""
-	}
-	return c.Value
-}
-
-// readSetCookies() parses all "Set-Cookie" values from
+// readSetCookies parses all "Set-Cookie" values from
 // the header h, removes the successfully parsed values from the 
 // "Set-Cookie" key in h and returns the parsed Cookies.
-func readSetCookies(h Header) *Cookies {
-	cookies := make(Cookies)
+func readSetCookies(h Header) []*Cookie {
+	cookies := []*Cookie{}
 	var unparsedLines []string
 	for _, line := range h["Set-Cookie"] {
 		parts := strings.Split(strings.TrimSpace(line), ";", -1)
 		if len(parts) == 1 && parts[0] == "" {
 			continue
 		}
-		nv := strings.Split(strings.TrimSpace(parts[0]), "=", 2) // Name=Value
-		if len(nv) != 2 {
+		parts[0] = strings.TrimSpace(parts[0])
+		j := strings.Index(parts[0], "=")
+		if j < 0 {
 			unparsedLines = append(unparsedLines, line)
 			continue
 		}
-		value, err := URLUnescape(nv[1])
+		name, value := parts[0][:j], parts[0][j+1:]
+		value, err := URLUnescape(value)
 		if err != nil {
 			unparsedLines = append(unparsedLines, line)
 			continue
 		}
-		c := Cookie{
+		c := &Cookie{
+			Name:     name,
 			Value:    value,
 			MaxAge:   -1, // Not specified
 			Raw:      line,
@@ -83,79 +69,80 @@ func readSetCookies(h Header) *Cookies {
 			if len(parts[i]) == 0 {
 				continue
 			}
-			av := strings.Split(parts[i], "=", 2) // Attribute=Value
-			if len(av) == 1 {
-				arg := av[0]
-				switch strings.ToLower(arg) {
-				case "secure":
-					c.Secure = true
-				case "httponly":
-					c.HttpOnly = true
-				default:
-					c.Unparsed = append(c.Unparsed, parts[i])
-				}
-			} else if len(av) == 2 {
-				arg0 := av[0]
-				arg1, err := URLUnescape(av[1])
+
+			attr, val := parts[i], ""
+			if j := strings.Index(attr, "="); j >= 0 {
+				attr, val = attr[:j], attr[j+1:]
+				val, err = URLUnescape(val)
 				if err != nil {
 					c.Unparsed = append(c.Unparsed, parts[i])
 					continue
 				}
-				switch strings.ToLower(arg0) {
-				case "comment":
-					c.Comment = arg1
-				case "domain":
-					c.Domain = arg1
-					// TODO: Add domain parsing
-				case "max-age":
-					secs, err := strconv.Atoi64(arg1)
-					if err != nil || secs < 0 {
-						c.Unparsed = append(c.Unparsed, parts[i])
-						continue
-					}
-					c.MaxAge = 1e9 * secs
-				case "expires":
-					c.RawExpires = arg1
-					exptime, err := time.Parse(time.RFC1123, arg1)
-					if err != nil {
-						c.Expires = time.Time{}
-						c.Unparsed = append(c.Unparsed, parts[i])
-						continue
-					}
-					c.Expires = *exptime
-				case "path":
-					c.Path = arg1
-					// TODO: Add path parsing
-				case "secure":
-					c.Secure = true
-				case "version":
-					c.Version, err = strconv.Atoui(arg1)
-					if err != nil {
-						c.Version = 0
-						c.Unparsed = append(c.Unparsed, parts[i])
-						continue
-					}
-				case "httponly":
-					c.HttpOnly = true
-				default:
-					c.Unparsed = append(c.Unparsed, parts[i])
-				}
 			}
+			switch strings.ToLower(attr) {
+			case "secure":
+				c.Secure = true
+				continue
+			case "httponly":
+				c.HttpOnly = true
+				continue
+			case "comment":
+				c.Comment = val
+				continue
+			case "domain":
+				c.Domain = val
+				// TODO: Add domain parsing
+				continue
+			case "max-age":
+				secs, err := strconv.Atoi64(val)
+				if err != nil || secs < 0 {
+					break
+				}
+				c.MaxAge = 1e9 * secs
+				continue
+			case "expires":
+				c.RawExpires = val
+				exptime, err := time.Parse(time.RFC1123, val)
+				if err != nil {
+					c.Expires = time.Time{}
+					break
+				}
+				c.Expires = *exptime
+				continue
+			case "path":
+				c.Path = val
+				// TODO: Add path parsing
+				continue
+			case "version":
+				c.Version, err = strconv.Atoui(val)
+				if err != nil {
+					c.Version = 0
+					break
+				}
+				continue
+			}
+			c.Unparsed = append(c.Unparsed, parts[i])
 		}
-		cookies[nv[0]] = c
+		cookies = append(cookies, c)
 	}
 	h["Set-Cookie"] = unparsedLines, unparsedLines != nil
-	return &cookies
+	if len(cookies) == 0 {
+		return nil
+	}
+	return cookies
 }
 
-// writeSetCookies() writes the wire representation of the set-cookies
-// to w#. Each cookie is written on a separate "Set-Cookie: " line.
+// writeSetCookies writes the wire representation of the set-cookies
+// to w. Each cookie is written on a separate "Set-Cookie: " line.
 // This choice is made because HTTP parsers tend to have a limit on
 // line-length, so it seems safer to place cookies on separate lines.
-func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
-	lines := make([]string, 0, len(*kk))
-	for n, c := range *kk {
-		var value string = CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
+func writeSetCookies(kk []*Cookie, w io.Writer) os.Error {
+	if kk == nil {
+		return nil
+	}
+	lines := make([]string, 0, len(kk))
+	for _, c := range kk {
+		var value string = CanonicalHeaderKey(c.Name) + "=" + URLEscape(c.Value) + "; "
 		var version string
 		if c.Version > 1 {
 			version = "Version=" + strconv.Uitoa(c.Version) + "; "
@@ -201,16 +188,16 @@ func (kk *Cookies) writeSetCookies(w io.Writer) os.Error {
 	return nil
 }
 
-// readCookies() parses all "Cookie" values from
-// the header h#, removes the successfully parsed values from the 
-// "Cookie" key in h# and returns the parsed Cookies.
-func readCookies(h Header) *Cookies {
-	cookies := make(Cookies)
+// readCookies parses all "Cookie" values from
+// the header h, removes the successfully parsed values from the 
+// "Cookie" key in h and returns the parsed Cookies.
+func readCookies(h Header) []*Cookie {
+	cookies := []*Cookie{}
 	lines, ok := h["Cookie"]
 	if !ok {
-		return &cookies
+		return cookies
 	}
-	var unparsedLines []string = make([]string, 0, 3)
+	unparsedLines := []string{}
 	for _, line := range lines {
 		parts := strings.Split(strings.TrimSpace(line), ";", -1)
 		if len(parts) == 1 && parts[0] == "" {
@@ -228,46 +215,42 @@ func readCookies(h Header) *Cookies {
 			if len(parts[i]) == 0 {
 				continue
 			}
-			av := strings.Split(strings.TrimSpace(parts[i]), "=", 2) // Attribute=Value
-			if len(av) == 1 {
-				arg := av[0]
-				switch strings.ToLower(arg) {
-				case "$httponly":
-					httponly = true
-				}
-			} else if len(av) == 2 {
-				arg0 := av[0]
-				arg1, err := URLUnescape(av[1])
+			attr, val := parts[i], ""
+			var err os.Error
+			if j := strings.Index(attr, "="); j >= 0 {
+				attr, val = attr[:j], attr[j+1:]
+				val, err = URLUnescape(val)
 				if err != nil {
 					continue
 				}
-				switch strings.ToLower(arg0) {
-				case "$version":
-					version, err = strconv.Atoui(arg1)
-					if err != nil {
-						version = 0
-						continue
-					}
-				case "$domain":
-					domain = arg1
-					// TODO: Add domain parsing
-				case "$path":
-					path = arg1
-					// TODO: Add path parsing
-				case "$comment":
-					comment = arg1
-				case "$httponly":
-					httponly = true
-				default:
-					lineCookies[arg0] = arg1
-				}
 			}
-		} // attribute-value iteration
+			switch strings.ToLower(attr) {
+			case "$httponly":
+				httponly = true
+			case "$version":
+				version, err = strconv.Atoui(val)
+				if err != nil {
+					version = 0
+					continue
+				}
+			case "$domain":
+				domain = val
+				// TODO: Add domain parsing
+			case "$path":
+				path = val
+				// TODO: Add path parsing
+			case "$comment":
+				comment = val
+			default:
+				lineCookies[attr] = val
+			}
+		}
 		if len(lineCookies) == 0 {
 			unparsedLines = append(unparsedLines, line)
 		}
 		for n, v := range lineCookies {
-			cookies[n] = Cookie{
+			cookies = append(cookies, &Cookie{
+				Name:     n,
 				Value:    v,
 				Path:     path,
 				Domain:   domain,
@@ -276,25 +259,24 @@ func readCookies(h Header) *Cookies {
 				HttpOnly: httponly,
 				MaxAge:   -1,
 				Raw:      line,
-			}
+			})
 		}
-	} // header "Cookie" line iteration
-
-	if len(unparsedLines) > 0 {
-		h["Cookie"] = unparsedLines
-	} else {
-		h["Cookie"] = nil, false
 	}
-	return &cookies
+	h["Cookie"] = unparsedLines, len(unparsedLines) > 0
+	if len(cookies) == 0 {
+		return nil
+	}
+	return cookies
 }
 
-// writeCookies() writes the wire representation of the cookies
-// to w#. Each cookie is written on a separate "Cookie: " line.
+// writeCookies writes the wire representation of the cookies
+// to w. Each cookie is written on a separate "Cookie: " line.
 // This choice is made because HTTP parsers tend to have a limit on
 // line-length, so it seems safer to place cookies on separate lines.
-func (kk *Cookies) writeCookies(w io.Writer) os.Error {
-	lines := make([]string, 0, len(*kk))
-	for n, c := range *kk {
+func writeCookies(kk []*Cookie, w io.Writer) os.Error {
+	lines := make([]string, 0, len(kk))
+	for _, c := range kk {
+		n := c.Name
 		var value string = CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
 		var version string
 		if c.Version > 1 {

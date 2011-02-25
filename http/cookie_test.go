@@ -12,11 +12,11 @@ import (
 
 
 var writeSetCookiesTests = []struct {
-	Cookies
-	Raw string
+	Cookies []*Cookie
+	Raw     string
 }{
 	{
-		Cookies{"cookie-1": Cookie{Value: "v$1", MaxAge: -1}},
+		[]*Cookie{ &Cookie{Name: "cookie-1", Value: "v$1", MaxAge: -1} },
 		"Set-Cookie: Cookie-1=v%241; \r\n",
 	},
 }
@@ -24,7 +24,7 @@ var writeSetCookiesTests = []struct {
 func TestWriteSetCookies(t *testing.T) {
 	for i, tt := range writeSetCookiesTests {
 		var w bytes.Buffer
-		tt.Cookies.writeSetCookies(&w)
+		writeSetCookies(tt.Cookies, &w)
 		seen := string(w.Bytes())
 		if seen != tt.Raw {
 			t.Errorf("Test %d, expecting:\n%s\nGot:\n%s\n", i, tt.Raw, seen)
@@ -34,11 +34,11 @@ func TestWriteSetCookies(t *testing.T) {
 }
 
 var writeCookiesTests = []struct {
-	Cookies
-	Raw string
+	Cookies []*Cookie
+	Raw     string
 }{
 	{
-		Cookies{"cookie-1": Cookie{Value: "v$1", MaxAge: -1}},
+		[]*Cookie{ &Cookie{Name: "cookie-1", Value: "v$1", MaxAge: -1} },
 		"Cookie: Cookie-1=v%241; \r\n",
 	},
 }
@@ -46,7 +46,7 @@ var writeCookiesTests = []struct {
 func TestWriteCookies(t *testing.T) {
 	for i, tt := range writeCookiesTests {
 		var w bytes.Buffer
-		tt.Cookies.writeCookies(&w)
+		writeCookies(tt.Cookies, &w)
 		seen := string(w.Bytes())
 		if seen != tt.Raw {
 			t.Errorf("Test %d, expecting:\n%s\nGot:\n%s\n", i, tt.Raw, seen)
@@ -56,40 +56,40 @@ func TestWriteCookies(t *testing.T) {
 }
 
 var readSetCookiesTests = []struct {
-	Header Header
-	Cookies
+	Header  Header
+	Cookies []*Cookie
 }{
 	{
 		Header{"Set-Cookie": {"Cookie-1=v%241; "}},
-		Cookies{"Cookie-1": Cookie{Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
+		[]*Cookie{ &Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "} },
 	},
 }
 
 func TestReadSetCookies(t *testing.T) {
 	for i, tt := range readSetCookiesTests {
 		c := readSetCookies(tt.Header)
-		if !reflect.DeepEqual(map[string]Cookie(*c), map[string]Cookie(tt.Cookies)) {
-			t.Errorf("#%d readSetCookies: have\n%#v\nwant\n%#v\n", i, (*c), tt.Cookies)
+		if !reflect.DeepEqual(c, tt.Cookies) {
+			t.Errorf("#%d readSetCookies: have\n%#v\nwant\n%#v\n", i, c, tt.Cookies)
 			continue
 		}
 	}
 }
 
 var readCookiesTests = []struct {
-	Header Header
-	Cookies
+	Header  Header
+	Cookies []*Cookie
 }{
 	{
 		Header{"Cookie": {"Cookie-1=v%241; "}},
-		Cookies{"Cookie-1": Cookie{Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
+		[]*Cookie{ &Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "} },
 	},
 }
 
 func TestReadCookies(t *testing.T) {
 	for i, tt := range readCookiesTests {
 		c := readCookies(tt.Header)
-		if !reflect.DeepEqual(map[string]Cookie(*c), map[string]Cookie(tt.Cookies)) {
-			t.Errorf("#%d readCookies: have\n%#v\nwant\n%#v\n", i, (*c), tt.Cookies)
+		if !reflect.DeepEqual(c, tt.Cookies) {
+			t.Errorf("#%d readCookies: have\n%#v\nwant\n%#v\n", i, c, tt.Cookies)
 			continue
 		}
 	}

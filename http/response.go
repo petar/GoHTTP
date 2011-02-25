@@ -46,8 +46,8 @@ type Response struct {
 	// Keys in the map are canonicalized (see CanonicalHeaderKey).
 	Header Header
 
-	// Cookies is a key-value map of HTTP cookies according to RFC 2109
-	Cookies Cookies
+	// SetCookie is an array of HTTP cookies according to RFC 2965
+	SetCookie []*Cookie
 
 	// Body represents the response body.
 	Body io.ReadCloser
@@ -127,10 +127,7 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 		return nil, err
 	}
 
-	cookies := readSetCookies(resp.Header)
-	if cookies != nil {
-		resp.Cookies = *cookies
-	}
+	resp.SetCookie = readSetCookies(resp.Header)
 
 	return resp, nil
 }
@@ -201,11 +198,8 @@ func (resp *Response) Write(w io.Writer) os.Error {
 		return err
 	}
 
-	if resp.Cookies != nil {
-		err = resp.Cookies.writeSetCookies(w)
-		if err != nil {
-			return err
-		}
+	if err = writeSetCookies(resp.SetCookie, w); err != nil {
+		return err
 	}
 
 	// End-of-header

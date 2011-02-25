@@ -92,8 +92,8 @@ type Request struct {
 	// following a hyphen uppercase and the rest lowercase.
 	Header Header
 
-	// Cookies is a key-value map of HTTP cookies according to RFC 2109
-	Cookies Cookies
+	// Cookie is an array of HTTP cookies according to RFC 2965
+	Cookie []*Cookie
 
 	// The message body.
 	Body io.ReadCloser
@@ -251,11 +251,8 @@ func (req *Request) write(w io.Writer, usingProxy bool) os.Error {
 		return err
 	}
 
-	if req.Cookies != nil {
-		err = req.Cookies.writeCookies(w)
-		if err != nil {
-			return err
-		}
+	if err = writeCookies(req.Cookie, w); err != nil {
+		return err
 	}
 
 	io.WriteString(w, "\r\n")
@@ -494,10 +491,7 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 		return nil, err
 	}
 
-	cookies := readCookies(req.Header)
-	if cookies != nil {
-		req.Cookies = *cookies
-	}
+	req.Cookie = readCookies(req.Header)
 
 	return req, nil
 }
