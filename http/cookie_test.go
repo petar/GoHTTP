@@ -16,7 +16,7 @@ var writeSetCookiesTests = []struct {
 	Raw     string
 }{
 	{
-		[]*Cookie{ &Cookie{Name: "cookie-1", Value: "v$1", MaxAge: -1} },
+		[]*Cookie{&Cookie{Name: "cookie-1", Value: "v$1", MaxAge: -1}},
 		"Set-Cookie: Cookie-1=v%241; \r\n",
 	},
 }
@@ -38,7 +38,7 @@ var writeCookiesTests = []struct {
 	Raw     string
 }{
 	{
-		[]*Cookie{ &Cookie{Name: "cookie-1", Value: "v$1", MaxAge: -1} },
+		[]*Cookie{&Cookie{Name: "cookie-1", Value: "v$1", MaxAge: -1}},
 		"Cookie: Cookie-1=v%241; \r\n",
 	},
 }
@@ -61,7 +61,7 @@ var readSetCookiesTests = []struct {
 }{
 	{
 		Header{"Set-Cookie": {"Cookie-1=v%241; "}},
-		[]*Cookie{ &Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "} },
+		[]*Cookie{&Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
 	},
 }
 
@@ -81,7 +81,7 @@ var readCookiesTests = []struct {
 }{
 	{
 		Header{"Cookie": {"Cookie-1=v%241; "}},
-		[]*Cookie{ &Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "} },
+		[]*Cookie{&Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
 	},
 }
 
