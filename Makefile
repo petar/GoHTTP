@@ -23,6 +23,7 @@ DIRS=\
      	util\
 	http\
 	server\
+	template\
 
 TEST=\
 	$(filter-out $(NOTEST),$(DIRS))

@@ -171,8 +171,7 @@ func (srv *Server) dispatch(q *Query) *Query {
 	p = p[len(surl):]
 	full := path.Join(srv.config.StaticPath, p)
 	resp, _ := http.NewResponseFile(full)
-	q.Write(resp)
-	q.Continue()
+	q.WriteAndContinue(resp)
 	return nil
 }
 

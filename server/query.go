@@ -11,7 +11,7 @@ import (
 )
 
 // Incoming requests are presented to the user as a Query object.
-// Query allows users to response to a request and to hijack the
+// Query allows users to respond to a request or to hijack the
 // underlying ServerConn, which is typically needed for CONNECT
 // requests.
 type Query struct {
@@ -19,7 +19,7 @@ type Query struct {
 	ssc      *stampedServerConn
 	req      *http.Request
 	err      os.Error
-	fwd      bool
+	fwd      bool	// If true, the user has already called either Continue() or Hijack()
 	hijacked bool
 }
 
@@ -48,6 +48,9 @@ func (q *Query) Continue() {
 		panic("continue/hijack")
 	}
 	q.fwd = true
+	if q.srv == nil {
+		panic("query zombie")	// XXX: To be removed when issue 1563 fixed
+	}
 	go q.srv.read(q.ssc)
 }
 
@@ -84,4 +87,12 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 		return
 	}
 	return
+}
+
+func (q *Query) WriteAndContinue(resp *http.Response) (err os.Error) {
+	err = q.Write(resp)
+	if err == nil {
+		q.Continue()
+	}
+	return err
 }
