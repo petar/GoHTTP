@@ -23,7 +23,7 @@ func NewCachedTemplate(filename string, fmap template.FormatterMap) *CachedTempl
 }
 
 func (c *CachedTemplate) Get() (templ *template.Template, err os.Error) {
-	if templ == nil {
+	if c.templ == nil {
 		return c.readFile()
 	}
 	fi, err := os.Stat(c.fname)
