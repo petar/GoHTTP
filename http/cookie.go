@@ -16,8 +16,7 @@ import (
 // Cookie represents a parsed RFC 2965 "Set-Cookie" line in HTTP
 // Response headers, extended with the HttpOnly attribute.
 // Cookie is also used to represent parsed "Cookie" lines in
-// HTTP Request headers. In this case, only the Value field is
-// significant.
+// HTTP Request headers.
 type Cookie struct {
 	Name       string
 	Value      string

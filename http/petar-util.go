@@ -47,6 +47,18 @@ func NewResponseFile(filename string) (*Response, os.Error) {
 	return r, nil
 }
 
+func NewResponseWithBody(r io.ReadCloser) *Response {
+	resp := NewResponse200()
+	resp.Body = NopCloser{r}
+	resp.TransferEncoding = []string{"chunked"}
+	resp.ContentLength = -1
+	return resp
+}
+
+func NewResponseWithReader(r io.Reader) *Response {
+	return NewResponseWithBody(NopCloser{r})
+}
+
 // DupResp returns a replica of resp and any error encountered
 // while reading resp.Body.
 func DupResp(resp *Response) (r2 *Response, err os.Error) {
