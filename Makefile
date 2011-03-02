@@ -24,6 +24,7 @@ DIRS=\
 	http\
 	server\
 	template\
+	#api\
 
 TEST=\
 	$(filter-out $(NOTEST),$(DIRS))
