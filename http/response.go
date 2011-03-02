@@ -127,9 +127,14 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 		return nil, err
 	}
 
-	resp.SetCookie = readSetCookies(resp.Header)
-
 	return resp, nil
+}
+
+func (resp *Response) GetSetCookie() []*Cookie {
+	if resp.SetCookie == nil {
+		resp.SetCookie = readSetCookies(resp.Header)
+	}
+	return resp.SetCookie
 }
 
 // RFC2616: Should treat

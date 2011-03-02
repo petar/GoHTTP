@@ -125,9 +125,6 @@ func readSetCookies(h Header) []*Cookie {
 		cookies = append(cookies, c)
 	}
 	h["Set-Cookie"] = unparsedLines, unparsedLines != nil
-	if len(cookies) == 0 {
-		return nil
-	}
 	return cookies
 }
 
@@ -262,9 +259,6 @@ func readCookies(h Header) []*Cookie {
 		}
 	}
 	h["Cookie"] = unparsedLines, len(unparsedLines) > 0
-	if len(cookies) == 0 {
-		return nil
-	}
 	return cookies
 }
 

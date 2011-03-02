@@ -496,6 +496,13 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 	return req, nil
 }
 
+func (req *Request) GetCookie() []*Cookie {
+	if req.Cookie == nil {
+		req.Cookie = readCookies(req.Header)
+	}
+	return req.Cookie
+}
+
 // ParseQuery parses the URL-encoded query string and returns
 // a map listing the values specified for each key.
 // ParseQuery always returns a non-nil map containing all the
