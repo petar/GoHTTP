@@ -13,6 +13,12 @@ import (
 	"time"
 )
 
+// TODO(petar): Explicitly forbid parsing of Set-Cookie attributes
+// starting with '$', which have been used to hack into broken
+// servers using the eventual Request headers containing those
+// invalid attributes that may overwrite intended $Version, $Path, 
+// etc. attributes.
+
 // Cookie represents a parsed RFC 2965 "Set-Cookie" line in HTTP
 // Response headers, extended with the HttpOnly attribute.
 // Cookie is also used to represent parsed "Cookie" lines in
@@ -23,6 +29,12 @@ type Cookie struct {
 	Path       string
 	Domain     string
 	Comment    string
+
+	// Cookie versions 1 and 2 are defined in RFC 2965.
+	// Read methods assign these values if they are explicitly 
+	// seen while parsing, or use Version=0 otherwise. 
+	// Write methods do not explicitly write the Version 
+	// attribute if lower than 2, for compatibility reasons.
 	Version    uint
 	Expires    time.Time
 	RawExpires string

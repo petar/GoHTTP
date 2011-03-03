@@ -50,6 +50,7 @@ func NewServer(l net.Listener, tmo int64, fdlim int) *Server {
 		qch:    make(chan *Query),
 	}
 	srv.fdl.Init(fdlim)
+	srv.stats.Init()
 	go srv.acceptLoop()
 	go srv.expireLoop()
 	return srv
@@ -72,7 +73,7 @@ func (srv *Server) SetStatic(urlPrefix, localPath string) os.Error {
 func (srv *Server) GetFDLimiter() *util.FDLimiter { return &srv.fdl }
 
 func (srv *Server) expireLoop() {
-	for {
+	for i := 0; ; i++ {
 		srv.lk.Lock()
 		if srv.listen == nil {
 			srv.lk.Unlock()
@@ -96,7 +97,9 @@ func (srv *Server) expireLoop() {
 		kills.Init()
 		kills = nil
 		time.Sleep(srv.tmo)
-		log.Println(srv.stats.SummaryLine())
+		if i % 4 == 0 {
+			log.Println(srv.stats.SummaryLine())
+		}
 	}
 }
 
