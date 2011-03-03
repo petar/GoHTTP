@@ -7,6 +7,7 @@ package server
 import (
 	//"fmt"
 	"container/list"
+	"log"
 	"net"
 	"os"
 	"path"
@@ -30,6 +31,7 @@ type Server struct {
 	fdl    util.FDLimiter
 	lk     sync.Mutex
 	config Config // Server configuration
+	stats  Stats
 }
 
 // NewServer creates a new Server which listens for connections on l.
@@ -81,6 +83,7 @@ func (srv *Server) expireLoop() {
 		for ssc, _ := range srv.conns {
 			if now-ssc.GetStamp() >= srv.tmo {
 				kills.PushBack(ssc)
+				srv.stats.IncExpireConn()
 			}
 		}
 		srv.lk.Unlock()
@@ -93,6 +96,7 @@ func (srv *Server) expireLoop() {
 		kills.Init()
 		kills = nil
 		time.Sleep(srv.tmo)
+		log.Println(srv.stats.SummaryLine())
 	}
 }
 
@@ -114,6 +118,7 @@ func (srv *Server) acceptLoop() {
 			srv.qch <- newQueryErr(err)
 			return
 		}
+		srv.stats.IncAcceptConn()
 		c.(*net.TCPConn).SetKeepAlive(true)
 		err = c.SetReadTimeout(srv.tmo)
 		if err != nil {
@@ -193,6 +198,7 @@ func (srv *Server) read(ssc *stampedServerConn) {
 			return
 		}
 		srv.qch <- &Query{srv, ssc, req, nil, false, false}
+		srv.stats.IncRequest()
 		return
 	}
 }

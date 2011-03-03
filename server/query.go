@@ -86,6 +86,7 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 		q.srv = nil
 		return
 	}
+	q.srv.stats.IncResponse()
 	return
 }
 
