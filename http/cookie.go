@@ -24,11 +24,11 @@ import (
 // Cookie is also used to represent parsed "Cookie" lines in
 // HTTP Request headers.
 type Cookie struct {
-	Name       string
-	Value      string
-	Path       string
-	Domain     string
-	Comment    string
+	Name    string
+	Value   string
+	Path    string
+	Domain  string
+	Comment string
 
 	// Cookie versions 1 and 2 are defined in RFC 2965.
 	// Read methods assign these values if they are explicitly 
