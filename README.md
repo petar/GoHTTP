@@ -7,7 +7,7 @@ This project also contains my research in designing new components
 for Go's HTTP infrastructure, like smart server classes, RESTful
 API servers, etc.
 
-The the packages in this project are used "in production" on a few
+The packages in this project are used "in production" on a few
 sites that I run, like e.g. [Population algorithms](http://popalg.org).
 
 ## Installation
