@@ -90,6 +90,7 @@ func (sc *ServerConn) Read() (req *Request, err os.Error) {
 		defer sc.lk.Unlock()
 		return nil, sc.re
 	}
+	r := sc.r
 	sc.lk.Unlock()
 
 	// Make sure body is fully consumed, even if user does not call body.Close
@@ -107,7 +108,7 @@ func (sc *ServerConn) Read() (req *Request, err os.Error) {
 		}
 	}
 
-	req, err = ReadRequest(sc.r)
+	req, err = ReadRequest(r)
 	if err != nil {
 		sc.lk.Lock()
 		defer sc.lk.Unlock()
@@ -165,6 +166,7 @@ func (sc *ServerConn) Write(req *Request, resp *Response) os.Error {
 		defer sc.lk.Unlock()
 		return sc.we
 	}
+	c := sc.c
 	sc.lk.Unlock()
 	if sc.nread <= sc.nwritten {
 		return os.NewError("persist server pipe count")
@@ -179,7 +181,7 @@ func (sc *ServerConn) Write(req *Request, resp *Response) os.Error {
 		sc.lk.Unlock()
 	}
 
-	err := resp.Write(sc.c)
+	err := resp.Write(c)
 	if err != nil {
 		sc.lk.Lock()
 		defer sc.lk.Unlock()
@@ -261,6 +263,7 @@ func (cc *ClientConn) Write(req *Request) (err os.Error) {
 		defer cc.lk.Unlock()
 		return cc.we
 	}
+	c := cc.c
 	cc.lk.Unlock()
 
 	if req.Close {
@@ -271,7 +274,7 @@ func (cc *ClientConn) Write(req *Request) (err os.Error) {
 		cc.lk.Unlock()
 	}
 
-	err = req.Write(cc.c)
+	err = req.Write(c)
 	if err != nil {
 		cc.lk.Lock()
 		defer cc.lk.Unlock()
@@ -316,6 +319,7 @@ func (cc *ClientConn) Read(req *Request) (resp *Response, err os.Error) {
 		defer cc.lk.Unlock()
 		return nil, cc.re
 	}
+	r := cc.r
 	cc.lk.Unlock()
 
 	// Make sure body is fully consumed, even if user does not call body.Close
@@ -333,7 +337,7 @@ func (cc *ClientConn) Read(req *Request) (resp *Response, err os.Error) {
 		}
 	}
 
-	resp, err = ReadResponse(cc.r, req.Method)
+	resp, err = ReadResponse(r, req.Method)
 	if err != nil {
 		cc.lk.Lock()
 		defer cc.lk.Unlock()
