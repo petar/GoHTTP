@@ -20,15 +20,15 @@ import (
 // that uses DefaultTransport.
 // Client is not yet very configurable.
 type Client struct {
-	Transport ClientTransport // if nil, DefaultTransport is used
+	Transport Transport // if nil, DefaultTransport is used
 }
 
 // DefaultClient is the default Client and is used by Get, Head, and Post.
 var DefaultClient = &Client{}
 
-// ClientTransport is an interface representing the ability to execute a
+// Transport is an interface representing the ability to execute a
 // single HTTP transaction, obtaining the Response for a given Request.
-type ClientTransport interface {
+type Transport interface {
 	// Do executes a single HTTP transaction, returning the Response for the
 	// request req.  Do should not attempt to interpret the response.
 	// In particular, Do must return err == nil if it obtained a response,
@@ -36,6 +36,9 @@ type ClientTransport interface {
 	// be reserved for failure to obtain a response.  Similarly, Do should
 	// not attempt to handle higher-level protocol details such as redirects,
 	// authentication, or cookies.
+	//
+	// Transports may modify the request. The request Headers field is
+	// guaranteed to be initalized.
 	Do(req *Request) (resp *Response, err os.Error)
 }
 
@@ -101,7 +104,7 @@ func (c *Client) Do(req *Request) (resp *Response, err os.Error) {
 // TODO: support persistent connections (multiple requests on a single connection).
 // send() method is nonpublic because, when we refactor the code for persistent
 // connections, it may no longer make sense to have a method with this signature.
-func send(req *Request, t ClientTransport) (resp *Response, err os.Error) {
+func send(req *Request, t Transport) (resp *Response, err os.Error) {
 	if t == nil {
 		t = DefaultTransport
 		if t == nil {
@@ -109,6 +112,14 @@ func send(req *Request, t ClientTransport) (resp *Response, err os.Error) {
 			return
 		}
 	}
+
+	// Most the callers of send (Get, Post, et al) don't need
+	// Headers, leaving it uninitialized.  We guarantee to the
+	// Transport that this has been initialized, though.
+	if req.Header == nil {
+		req.Header = Header(make(map[string][]string))
+	}
+
 	info := req.URL.RawUserinfo
 	if len(info) > 0 {
 		enc := base64.URLEncoding
