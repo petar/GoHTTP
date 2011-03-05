@@ -90,6 +90,10 @@ func (sc *ServerConn) Read() (req *Request, err os.Error) {
 		defer sc.lk.Unlock()
 		return nil, sc.re
 	}
+	if sc.r == nil { // connection closed by user in the meantime
+		defer sc.lk.Unlock()
+		return nil, os.EBADF
+	}
 	r := sc.r
 	sc.lk.Unlock()
 
@@ -165,6 +169,10 @@ func (sc *ServerConn) Write(req *Request, resp *Response) os.Error {
 	if sc.we != nil {
 		defer sc.lk.Unlock()
 		return sc.we
+	}
+	if sc.c == nil { // connection closed by user in the meantime
+		defer sc.lk.Unlock()
+		return os.EBADF
 	}
 	c := sc.c
 	sc.lk.Unlock()
@@ -263,6 +271,10 @@ func (cc *ClientConn) Write(req *Request) (err os.Error) {
 		defer cc.lk.Unlock()
 		return cc.we
 	}
+	if cc.c == nil { // connection closed by user in the meantime
+		defer cc.lk.Unlock()
+		return os.EBADF
+	}
 	c := cc.c
 	cc.lk.Unlock()
 
@@ -318,6 +330,10 @@ func (cc *ClientConn) Read(req *Request) (resp *Response, err os.Error) {
 	if cc.re != nil {
 		defer cc.lk.Unlock()
 		return nil, cc.re
+	}
+	if cc.r == nil { // connection closed by user in the meantime
+		defer cc.lk.Unlock()
+		return nil, os.EBADF
 	}
 	r := cc.r
 	cc.lk.Unlock()
