@@ -7,5 +7,6 @@ include $(GOROOT)/src/Make.inc
 TARG=github.com/petar/GoHTTP/http/httptest
 GOFILES=\
 	recorder.go\
+	server.go\
 
 include $(GOROOT)/src/Make.pkg

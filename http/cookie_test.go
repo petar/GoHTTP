@@ -17,14 +17,14 @@ var writeSetCookiesTests = []struct {
 }{
 	{
 		[]*Cookie{&Cookie{Name: "cookie-1", Value: "v$1", MaxAge: -1}},
-		"Set-Cookie: Cookie-1=v%241; \r\n",
+		"Set-Cookie: Cookie-1=v$1\r\n",
 	},
 }
 
 func TestWriteSetCookies(t *testing.T) {
 	for i, tt := range writeSetCookiesTests {
 		var w bytes.Buffer
-		writeSetCookies(tt.Cookies, &w)
+		writeSetCookies(&w, tt.Cookies)
 		seen := string(w.Bytes())
 		if seen != tt.Raw {
 			t.Errorf("Test %d, expecting:\n%s\nGot:\n%s\n", i, tt.Raw, seen)
@@ -39,14 +39,14 @@ var writeCookiesTests = []struct {
 }{
 	{
 		[]*Cookie{&Cookie{Name: "cookie-1", Value: "v$1", MaxAge: -1}},
-		"Cookie: Cookie-1=v%241; \r\n",
+		"Cookie: Cookie-1=v$1\r\n",
 	},
 }
 
 func TestWriteCookies(t *testing.T) {
 	for i, tt := range writeCookiesTests {
 		var w bytes.Buffer
-		writeCookies(tt.Cookies, &w)
+		writeCookies(&w, tt.Cookies)
 		seen := string(w.Bytes())
 		if seen != tt.Raw {
 			t.Errorf("Test %d, expecting:\n%s\nGot:\n%s\n", i, tt.Raw, seen)
@@ -60,8 +60,8 @@ var readSetCookiesTests = []struct {
 	Cookies []*Cookie
 }{
 	{
-		Header{"Set-Cookie": {"Cookie-1=v%241; "}},
-		[]*Cookie{&Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
+		Header{"Set-Cookie": {"Cookie-1=v$1"}},
+		[]*Cookie{&Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v$1"}},
 	},
 }
 
@@ -80,8 +80,8 @@ var readCookiesTests = []struct {
 	Cookies []*Cookie
 }{
 	{
-		Header{"Cookie": {"Cookie-1=v%241; "}},
-		[]*Cookie{&Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v%241; "}},
+		Header{"Cookie": {"Cookie-1=v$1"}},
+		[]*Cookie{&Cookie{Name: "Cookie-1", Value: "v$1", MaxAge: -1, Raw: "Cookie-1=v$1"}},
 	},
 }
 

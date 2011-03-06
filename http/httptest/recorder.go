@@ -8,7 +8,7 @@ package httptest
 import (
 	"bufio"
 	"bytes"
-	"http"
+	"github.com/petar/GoHTTP/http"
 	"io"
 	"os"
 )

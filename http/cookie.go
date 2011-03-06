@@ -5,6 +5,8 @@
 package http
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"os"
 	"sort"
@@ -38,7 +40,7 @@ type Cookie struct {
 	Version    uint
 	Expires    time.Time
 	RawExpires string
-	MaxAge     int64 // Max age in nanoseconds
+	MaxAge     int // Max age in seconds
 	Secure     bool
 	HttpOnly   bool
 	Raw        string
@@ -69,11 +71,10 @@ func readSetCookies(h Header) []*Cookie {
 			continue
 		}
 		c := &Cookie{
-			Name:     name,
-			Value:    value,
-			MaxAge:   -1, // Not specified
-			Raw:      line,
-			Unparsed: make([]string, 0, 1),
+			Name:   name,
+			Value:  value,
+			MaxAge: -1, // Not specified
+			Raw:    line,
 		}
 		for i := 1; i < len(parts); i++ {
 			parts[i] = strings.TrimSpace(parts[i])
@@ -105,11 +106,11 @@ func readSetCookies(h Header) []*Cookie {
 				// TODO: Add domain parsing
 				continue
 			case "max-age":
-				secs, err := strconv.Atoi64(val)
+				secs, err := strconv.Atoi(val)
 				if err != nil || secs < 0 {
 					break
 				}
-				c.MaxAge = 1e9 * secs
+				c.MaxAge = secs
 				continue
 			case "expires":
 				c.RawExpires = val
@@ -144,48 +145,41 @@ func readSetCookies(h Header) []*Cookie {
 // to w. Each cookie is written on a separate "Set-Cookie: " line.
 // This choice is made because HTTP parsers tend to have a limit on
 // line-length, so it seems safer to place cookies on separate lines.
-func writeSetCookies(kk []*Cookie, w io.Writer) os.Error {
+func writeSetCookies(w io.Writer, kk []*Cookie) os.Error {
 	if kk == nil {
 		return nil
 	}
 	lines := make([]string, 0, len(kk))
+	var b bytes.Buffer
 	for _, c := range kk {
-		var value string = CanonicalHeaderKey(c.Name) + "=" + URLEscape(c.Value) + "; "
-		var version string
+		b.Reset()
+		// TODO(petar): c.Value (below) should be unquoted if it is recognized as quoted
+		fmt.Fprintf(&b, "%s=%s", CanonicalHeaderKey(c.Name), c.Value)
 		if c.Version > 1 {
-			version = "Version=" + strconv.Uitoa(c.Version) + "; "
+			fmt.Fprintf(&b, "Version=%d; ", c.Version)
 		}
-		var path string
 		if len(c.Path) > 0 {
-			path = "Path=" + URLEscape(c.Path) + "; "
+			fmt.Fprintf(&b, "; Path=%s", URLEscape(c.Path))
 		}
-		var domain string
 		if len(c.Domain) > 0 {
-			domain = "Domain=" + URLEscape(c.Domain) + "; "
+			fmt.Fprintf(&b, "; Domain=%s", URLEscape(c.Domain))
 		}
-		var expires string
 		if len(c.Expires.Zone) > 0 {
-			expires = "Expires=" + c.Expires.Format(time.RFC1123) + "; "
+			fmt.Fprintf(&b, "; Expires=%s", c.Expires.Format(time.RFC1123))
 		}
-		var maxage string
 		if c.MaxAge >= 0 {
-			maxage = "Max-Age=" + strconv.Itoa64(c.MaxAge) + "; "
+			fmt.Fprintf(&b, "; Max-Age=%d", c.MaxAge)
 		}
-		var httponly string
 		if c.HttpOnly {
-			httponly = "HttpOnly; "
+			fmt.Fprintf(&b, "; HttpOnly")
 		}
-		var secure string
 		if c.Secure {
-			secure = "Secure; "
+			fmt.Fprintf(&b, "; Secure")
 		}
-		var comment string
 		if len(c.Comment) > 0 {
-			comment = "Comment=" + URLEscape(c.Comment) + "; "
+			fmt.Fprintf(&b, "; Comment=%s", URLEscape(c.Comment))
 		}
-		lines = append(lines, "Set-Cookie: "+
-			value+version+domain+path+expires+
-			maxage+secure+httponly+comment+"\r\n")
+		lines = append(lines, "Set-Cookie: "+b.String()+"\r\n")
 	}
 	sort.SortStrings(lines)
 	for _, l := range lines {
@@ -278,33 +272,30 @@ func readCookies(h Header) []*Cookie {
 // to w. Each cookie is written on a separate "Cookie: " line.
 // This choice is made because HTTP parsers tend to have a limit on
 // line-length, so it seems safer to place cookies on separate lines.
-func writeCookies(kk []*Cookie, w io.Writer) os.Error {
+func writeCookies(w io.Writer, kk []*Cookie) os.Error {
 	lines := make([]string, 0, len(kk))
+	var b bytes.Buffer
 	for _, c := range kk {
+		b.Reset()
 		n := c.Name
-		var value string = CanonicalHeaderKey(n) + "=" + URLEscape(c.Value) + "; "
-		var version string
 		if c.Version > 1 {
-			version = "$Version=" + strconv.Uitoa(c.Version) + "; "
+			fmt.Fprintf(&b, "$Version=%d; ", c.Version)
 		}
-		var path string
+		// TODO(petar): c.Value (below) should be unquoted if it is recognized as quoted
+		fmt.Fprintf(&b, "%s=%s", CanonicalHeaderKey(n), c.Value)
 		if len(c.Path) > 0 {
-			path = "$Path=" + URLEscape(c.Path) + "; "
+			fmt.Fprintf(&b, "; $Path=%s", URLEscape(c.Path))
 		}
-		var domain string
 		if len(c.Domain) > 0 {
-			domain = "$Domain=" + URLEscape(c.Domain) + "; "
+			fmt.Fprintf(&b, "; $Domain=%s", URLEscape(c.Domain))
 		}
-		var httponly string
 		if c.HttpOnly {
-			httponly = "$HttpOnly; "
+			fmt.Fprintf(&b, "; $HttpOnly")
 		}
-		var comment string
 		if len(c.Comment) > 0 {
-			comment = "$Comment=" + URLEscape(c.Comment) + "; "
+			fmt.Fprintf(&b, "; $Comment=%s", URLEscape(c.Comment))
 		}
-		lines = append(lines, "Cookie: "+
-			version+value+domain+path+httponly+comment+"\r\n")
+		lines = append(lines, "Cookie: "+b.String()+"\r\n")
 	}
 	sort.SortStrings(lines)
 	for _, l := range lines {

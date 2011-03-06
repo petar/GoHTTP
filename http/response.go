@@ -203,7 +203,7 @@ func (resp *Response) Write(w io.Writer) os.Error {
 		return err
 	}
 
-	if err = writeSetCookies(resp.SetCookie, w); err != nil {
+	if err = writeSetCookies(w, resp.SetCookie); err != nil {
 		return err
 	}
 

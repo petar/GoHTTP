@@ -252,7 +252,7 @@ func (req *Request) write(w io.Writer, usingProxy bool) os.Error {
 		return err
 	}
 
-	if err = writeCookies(req.Cookie, w); err != nil {
+	if err = writeCookies(w, req.Cookie); err != nil {
 		return err
 	}
 
