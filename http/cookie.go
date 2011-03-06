@@ -15,6 +15,39 @@ import (
 	"time"
 )
 
+// A note on Version=0 vs. Version=1 cookies
+//
+// The difference between Set-Cookie and Set-Cookie2 is hard to discern from the
+// RFCs as it is not stated explicitly.  There seem to be three standards
+// lingering on the web: Netscape, RFC 2109 (aka Version=0) and RFC 2965 (aka
+// Version=1). It seems that Netscape and RFC 2109 are the same thing, 
+// hereafter Version=0 cookies.
+//
+// In general, Set-Cookie2 is a superset of Set-Cookie. It has a few new
+// attributes like HttpOnly and Secure.  To be meticulous, if you intend to use
+// these, you need to send a Set-Cookie2.  However, it is most likely most
+// modern browsers will not complain seeing an HttpOnly attribute in a
+// Set-Cookie header.
+//
+// Regarding Cookie and Cookie2. Both RFC 2109 and RFC 2965 use Cookie in the
+// same way: two send cookie values from clients to servers and the allowable
+// attributes seem to be the same.
+// 
+// The Cookie2 header is used for a different purpose. If you suspect that
+// the server speaks Version=1 (RFC 2965) then along with the Cookie
+// header lines, you can also send:
+//
+//   Cookie2: $Version="1"
+//
+// in order to suggest to the server that you understand Version=1 cookies. At
+// which point the server may continue responding with Set-Cookie2 headers.
+// It is probably advicable not to do this presently.
+//
+// This implementation of cookies supports neither Set-Cookie2 nor Cookie2
+// headers. However, it is capable of correctly parsing Version=1 Cookies
+// (along with Version=0) as well as Set-Cookie headers which utilize the 
+// full Set-Cookie2 syntax.
+
 // TODO(petar): Explicitly forbid parsing of Set-Cookie attributes
 // starting with '$', which have been used to hack into broken
 // servers using the eventual Request headers containing those
@@ -32,11 +65,11 @@ type Cookie struct {
 	Domain  string
 	Comment string
 
-	// Cookie versions 1 and 2 are defined in RFC 2965.
-	// Read methods assign these values if they are explicitly 
-	// seen while parsing, or use Version=0 otherwise. 
-	// Write methods do not explicitly write the Version 
-	// attribute if lower than 2, for compatibility reasons.
+	// Cookie version 0 is defined in RFC 2109; version 1 is defined in RFC 2965.
+	// Currently, read methods parse only 'Set-Cookie' headers (under both RFC 2109 and RFC 2965), 
+	// however they may also set Version=1 if it is specified using an attribute-value pair.
+	// TODO(petar): Read 'Set-Cookie2' headers and prioritize them over equivalent 'Set-Cookie'
+	// headers. 'Set-Cookie2' headers are still extremely rare.
 	Version    uint
 	Expires    time.Time
 	RawExpires string
@@ -155,7 +188,7 @@ func writeSetCookies(w io.Writer, kk []*Cookie) os.Error {
 		b.Reset()
 		// TODO(petar): c.Value (below) should be unquoted if it is recognized as quoted
 		fmt.Fprintf(&b, "%s=%s", CanonicalHeaderKey(c.Name), c.Value)
-		if c.Version > 1 {
+		if c.Version > 0 {
 			fmt.Fprintf(&b, "Version=%d; ", c.Version)
 		}
 		if len(c.Path) > 0 {
@@ -278,7 +311,7 @@ func writeCookies(w io.Writer, kk []*Cookie) os.Error {
 	for _, c := range kk {
 		b.Reset()
 		n := c.Name
-		if c.Version > 1 {
+		if c.Version > 0 {
 			fmt.Fprintf(&b, "$Version=%d; ", c.Version)
 		}
 		// TODO(petar): c.Value (below) should be unquoted if it is recognized as quoted
