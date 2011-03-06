@@ -20,57 +20,53 @@ import (
 // The difference between Set-Cookie and Set-Cookie2 is hard to discern from the
 // RFCs as it is not stated explicitly.  There seem to be three standards
 // lingering on the web: Netscape, RFC 2109 (aka Version=0) and RFC 2965 (aka
-// Version=1). It seems that Netscape and RFC 2109 are the same thing, 
-// hereafter Version=0 cookies.
+// Version=1). It seems that Netscape and RFC 2109 are the same thing, hereafter
+// Version=0 cookies.
 //
 // In general, Set-Cookie2 is a superset of Set-Cookie. It has a few new
-// attributes like HttpOnly and Secure.  To be meticulous, if you intend to use
-// these, you need to send a Set-Cookie2.  However, it is most likely most
-// modern browsers will not complain seeing an HttpOnly attribute in a
+// attributes like HttpOnly and Secure.  To be meticulous, if a server intends
+// to use these, it needs to send a Set-Cookie2.  However, it is most likely
+// most modern browsers will not complain seeing an HttpOnly attribute in a
 // Set-Cookie header.
 //
-// Regarding Cookie and Cookie2. Both RFC 2109 and RFC 2965 use Cookie in the
-// same way: two send cookie values from clients to servers and the allowable
-// attributes seem to be the same.
+// Both RFC 2109 and RFC 2965 use Cookie in the same way - two send cookie
+// values from clients to servers - and the allowable attributes seem to be the
+// same.
 // 
-// The Cookie2 header is used for a different purpose. If you suspect that
-// the server speaks Version=1 (RFC 2965) then along with the Cookie
-// header lines, you can also send:
+// The Cookie2 header is used for a different purpose. If a client suspects that
+// the server speaks Version=1 (RFC 2965) then along with the Cookie header
+// lines, you can also send:
 //
 //   Cookie2: $Version="1"
 //
 // in order to suggest to the server that you understand Version=1 cookies. At
 // which point the server may continue responding with Set-Cookie2 headers.
-// It is probably advisable not to do this presently.
+// When a client sends the (above) Cookie2 header line, it must be prepated to
+// understand incoming Set-Cookie2.
 //
 // This implementation of cookies supports neither Set-Cookie2 nor Cookie2
-// headers. However, it is capable of correctly parsing Version=1 Cookies
-// (along with Version=0) as well as Set-Cookie headers which utilize the 
-// full Set-Cookie2 syntax.
+// headers. However, it parses Version=1 Cookies (along with Version=0) as well
+// as Set-Cookie headers which utilize the full Set-Cookie2 syntax.
 
 // TODO(petar): Explicitly forbid parsing of Set-Cookie attributes
 // starting with '$', which have been used to hack into broken
 // servers using the eventual Request headers containing those
 // invalid attributes that may overwrite intended $Version, $Path, 
 // etc. attributes.
+// TODO(petar): Read 'Set-Cookie2' headers and prioritize them over equivalent
+// 'Set-Cookie' headers. 'Set-Cookie2' headers are still extremely rare.
 
-// Cookie represents a parsed RFC 2965 "Set-Cookie" line in HTTP
-// Response headers, extended with the HttpOnly attribute.
-// Cookie is also used to represent parsed "Cookie" lines in
-// HTTP Request headers.
+// A Cookie represents an RFC 2965 HTTP cookie as sent in
+// the Set-Cookie header of an HTTP response or the Cookie header
+// of an HTTP request.
+// The Set-Cookie2 and Cookie2 headers are unimplemented.
 type Cookie struct {
-	Name    string
-	Value   string
-	Path    string
-	Domain  string
-	Comment string
-
-	// Cookie version 0 is defined in RFC 2109; version 1 is defined in RFC 2965.
-	// Currently, read methods parse only 'Set-Cookie' headers (under both RFC 2109 and RFC 2965), 
-	// however they may also set Version=1 if it is specified using an attribute-value pair.
-	// TODO(petar): Read 'Set-Cookie2' headers and prioritize them over equivalent 'Set-Cookie'
-	// headers. 'Set-Cookie2' headers are still extremely rare.
-	Version    uint
+	Name       string
+	Value      string
+	Path       string
+	Domain     string
+	Comment    string
+	Version    int
 	Expires    time.Time
 	RawExpires string
 	MaxAge     int // Max age in seconds
@@ -159,7 +155,7 @@ func readSetCookies(h Header) []*Cookie {
 				// TODO: Add path parsing
 				continue
 			case "version":
-				c.Version, err = strconv.Atoui(val)
+				c.Version, err = strconv.Atoi(val)
 				if err != nil {
 					c.Version = 0
 					break
@@ -240,7 +236,7 @@ func readCookies(h Header) []*Cookie {
 		}
 		// Per-line attributes
 		var lineCookies = make(map[string]string)
-		var version uint
+		var version int
 		var path string
 		var domain string
 		var comment string
@@ -263,7 +259,7 @@ func readCookies(h Header) []*Cookie {
 			case "$httponly":
 				httponly = true
 			case "$version":
-				version, err = strconv.Atoui(val)
+				version, err = strconv.Atoi(val)
 				if err != nil {
 					version = 0
 					continue
