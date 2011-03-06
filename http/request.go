@@ -92,7 +92,7 @@ type Request struct {
 	// following a hyphen uppercase and the rest lowercase.
 	Header Header
 
-	// Cookie is an array of HTTP cookies according to RFC 2965
+	// Cookie records the HTTP cookies sent with the request.
 	Cookie []*Cookie
 
 	// The message body.
@@ -495,13 +495,6 @@ func ReadRequest(b *bufio.Reader) (req *Request, err os.Error) {
 	req.Cookie = readCookies(req.Header)
 
 	return req, nil
-}
-
-func (req *Request) GetCookie() []*Cookie {
-	if req.Cookie == nil {
-		req.Cookie = readCookies(req.Header)
-	}
-	return req.Cookie
 }
 
 // ParseQuery parses the URL-encoded query string and returns

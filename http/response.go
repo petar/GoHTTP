@@ -46,7 +46,7 @@ type Response struct {
 	// Keys in the map are canonicalized (see CanonicalHeaderKey).
 	Header Header
 
-	// SetCookie is an array of HTTP cookies according to RFC 2965
+	// SetCookie records the Set-Cookie requests sent with the response.
 	SetCookie []*Cookie
 
 	// Body represents the response body.
@@ -127,14 +127,9 @@ func ReadResponse(r *bufio.Reader, requestMethod string) (resp *Response, err os
 		return nil, err
 	}
 
-	return resp, nil
-}
+	resp.SetCookie = readSetCookies(resp.Header)
 
-func (resp *Response) GetSetCookie() []*Cookie {
-	if resp.SetCookie == nil {
-		resp.SetCookie = readSetCookies(resp.Header)
-	}
-	return resp.SetCookie
+	return resp, nil
 }
 
 // RFC2616: Should treat
