@@ -41,7 +41,7 @@ import (
 //
 // in order to suggest to the server that you understand Version=1 cookies. At
 // which point the server may continue responding with Set-Cookie2 headers.
-// It is probably advicable not to do this presently.
+// It is probably advisable not to do this presently.
 //
 // This implementation of cookies supports neither Set-Cookie2 nor Cookie2
 // headers. However, it is capable of correctly parsing Version=1 Cookies
