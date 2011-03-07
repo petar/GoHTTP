@@ -15,7 +15,9 @@ import (
 	"time"
 )
 
-// This implementation is done according to IETF draft-ietf-httpstate-cookie-23.
+// This implementation is done according to IETF draft-ietf-httpstate-cookie-23, found at
+//
+//    http://tools.ietf.org/html/draft-ietf-httpstate-cookie-23
 
 // A Cookie represents an HTTP cookie as sent in the Set-Cookie header of an
 // HTTP response or the Cookie header of an HTTP request.
@@ -24,7 +26,6 @@ type Cookie struct {
 	Value      string
 	Path       string
 	Domain     string
-	Comment    string
 	Expires    time.Time
 	RawExpires string
 	MaxAge     int // Max age in seconds
@@ -51,11 +52,10 @@ func readSetCookies(h Header) []*Cookie {
 			unparsedLines = append(unparsedLines, line)
 			continue
 		}
-		// TODO(petar): value (below) should be unquoted if it is recognized as quoted
 		name, value := parts[0][:j], parts[0][j+1:]
 		c := &Cookie{
 			Name:   name,
-			Value:  value,
+			Value:  unquoteCookieValue(value),
 			MaxAge: -1, // Not specified
 			Raw:    line,
 		}
@@ -75,9 +75,6 @@ func readSetCookies(h Header) []*Cookie {
 				continue
 			case "httponly":
 				c.HttpOnly = true
-				continue
-			case "comment":
-				c.Comment = val
 				continue
 			case "domain":
 				c.Domain = val
@@ -124,7 +121,7 @@ func writeSetCookies(w io.Writer, kk []*Cookie) os.Error {
 	var b bytes.Buffer
 	for _, c := range kk {
 		b.Reset()
-		fmt.Fprintf(&b, "%s=%s", CanonicalHeaderKey(c.Name), c.Value)
+		fmt.Fprintf(&b, "%s=%s", c.Name, c.Value)
 		if len(c.Path) > 0 {
 			fmt.Fprintf(&b, "; Path=%s", URLEscape(c.Path))
 		}
@@ -142,9 +139,6 @@ func writeSetCookies(w io.Writer, kk []*Cookie) os.Error {
 		}
 		if c.Secure {
 			fmt.Fprintf(&b, "; Secure")
-		}
-		if len(c.Comment) > 0 {
-			fmt.Fprintf(&b, "; Comment=%s", URLEscape(c.Comment))
 		}
 		lines = append(lines, "Set-Cookie: "+b.String()+"\r\n")
 	}
@@ -188,11 +182,10 @@ func readCookies(h Header) []*Cookie {
 		if len(lineCookies) == 0 {
 			unparsedLines = append(unparsedLines, line)
 		}
-		// TODO(petar): value v (below) should be unquoted if it is recognized as quoted
 		for n, v := range lineCookies {
 			cookies = append(cookies, &Cookie{
 				Name:   n,
-				Value:  v,
+				Value:  unquoteCookieValue(v),
 				MaxAge: -1,
 				Raw:    line,
 			})
@@ -209,7 +202,7 @@ func readCookies(h Header) []*Cookie {
 func writeCookies(w io.Writer, kk []*Cookie) os.Error {
 	lines := make([]string, 0, len(kk))
 	for _, c := range kk {
-		lines = append(lines, fmt.Sprintf("Cookie: %s=%s\r\n", CanonicalHeaderKey(c.Name), c.Value))
+		lines = append(lines, fmt.Sprintf("Cookie: %s=%s\r\n", c.Name, c.Value))
 	}
 	sort.SortStrings(lines)
 	for _, l := range lines {
@@ -218,4 +211,11 @@ func writeCookies(w io.Writer, kk []*Cookie) os.Error {
 		}
 	}
 	return nil
+}
+
+func unquoteCookieValue(v string) string {
+	if len(v) > 1 && v[0] == '"' && v[len(v)-1] == '"' {
+		return v[1 : len(v)-1]
+	}
+	return v
 }
