@@ -21,8 +21,8 @@ all: install
 
 DIRS=\
      	util\
-	http/httptest\
 	http\
+	http/httptest\
 	http/cgi\
 	server\
 	template\

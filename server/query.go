@@ -90,10 +90,7 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 	return
 }
 
-func (q *Query) WriteAndContinue(resp *http.Response) (err os.Error) {
-	err = q.Write(resp)
-	if err == nil {
-		q.Continue()
-	}
-	return err
+func (q *Query) ContinueAndWrite(resp *http.Response) (err os.Error) {
+	q.Continue()
+	return q.Write(resp)
 }
