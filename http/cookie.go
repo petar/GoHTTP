@@ -28,7 +28,11 @@ type Cookie struct {
 	Domain     string
 	Expires    time.Time
 	RawExpires string
-	MaxAge     int // Max age in seconds
+	
+	// MaxAge=0 means no 'Max-Age' attribute specified. 
+	// MaxAge<0 means delete cookie now, equivalently 'Max-Age: 0'
+	// MaxAge>0 means Max-Age attribute present and given in seconds
+	MaxAge     int
 	Secure     bool
 	HttpOnly   bool
 	Raw        string
@@ -65,7 +69,6 @@ func readSetCookies(h Header) []*Cookie {
 		c := &Cookie{
 			Name:   name,
 			Value:  value,
-			MaxAge: -1, // Not specified
 			Raw:    line,
 		}
 		for i := 1; i < len(parts); i++ {
@@ -99,7 +102,11 @@ func readSetCookies(h Header) []*Cookie {
 				if err != nil || secs < 0 {
 					break
 				}
-				c.MaxAge = secs
+				if secs == 0 {
+					c.MaxAge = -1
+				} else {
+					c.MaxAge = secs
+				}
 				continue
 			case "expires":
 				c.RawExpires = val
@@ -145,8 +152,10 @@ func writeSetCookies(w io.Writer, kk []*Cookie) os.Error {
 		if len(c.Expires.Zone) > 0 {
 			fmt.Fprintf(&b, "; Expires=%s", c.Expires.Format(time.RFC1123))
 		}
-		if c.MaxAge >= 0 {
+		if c.MaxAge > 0 {
 			fmt.Fprintf(&b, "; Max-Age=%d", c.MaxAge)
+		} else if c.MaxAge < 0 {
+			fmt.Fprintf(&b, "; Max-Age=0")
 		}
 		if c.HttpOnly {
 			fmt.Fprintf(&b, "; HttpOnly")
@@ -207,7 +216,6 @@ func readCookies(h Header) []*Cookie {
 			cookies = append(cookies, &Cookie{
 				Name:   n,
 				Value:  v,
-				MaxAge: -1,
 				Raw:    line,
 			})
 		}
