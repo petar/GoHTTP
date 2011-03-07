@@ -28,15 +28,15 @@ type Cookie struct {
 	Domain     string
 	Expires    time.Time
 	RawExpires string
-	
+
 	// MaxAge=0 means no 'Max-Age' attribute specified. 
 	// MaxAge<0 means delete cookie now, equivalently 'Max-Age: 0'
 	// MaxAge>0 means Max-Age attribute present and given in seconds
-	MaxAge     int
-	Secure     bool
-	HttpOnly   bool
-	Raw        string
-	Unparsed   []string // Raw text of unparsed attribute-value pairs
+	MaxAge   int
+	Secure   bool
+	HttpOnly bool
+	Raw      string
+	Unparsed []string // Raw text of unparsed attribute-value pairs
 }
 
 // readSetCookies parses all "Set-Cookie" values from
@@ -61,15 +61,15 @@ func readSetCookies(h Header) []*Cookie {
 			unparsedLines = append(unparsedLines, line)
 			continue
 		}
-		value, err := parseCookieValue(value)
-		if err != nil {
+		value, success := parseCookieValue(value)
+		if !success {
 			unparsedLines = append(unparsedLines, line)
 			continue
 		}
 		c := &Cookie{
-			Name:   name,
-			Value:  value,
-			Raw:    line,
+			Name:  name,
+			Value: value,
+			Raw:   line,
 		}
 		for i := 1; i < len(parts); i++ {
 			parts[i] = strings.TrimSpace(parts[i])
@@ -81,8 +81,8 @@ func readSetCookies(h Header) []*Cookie {
 			if j := strings.Index(attr, "="); j >= 0 {
 				attr, val = attr[:j], attr[j+1:]
 			}
-			val, err = parseCookieValue(val)
-			if err != nil {
+			val, success = parseCookieValue(val)
+			if !success {
 				c.Unparsed = append(c.Unparsed, parts[i])
 				continue
 			}
@@ -99,10 +99,10 @@ func readSetCookies(h Header) []*Cookie {
 				continue
 			case "max-age":
 				secs, err := strconv.Atoi(val)
-				if err != nil || secs < 0 {
+				if err != nil || secs < 0 || secs != 0 && val[0] == '0' {
 					break
 				}
-				if secs == 0 {
+				if secs <= 0 {
 					c.MaxAge = -1
 				} else {
 					c.MaxAge = secs
@@ -190,7 +190,7 @@ func readCookies(h Header) []*Cookie {
 			continue
 		}
 		// Per-line attributes
-		var lineCookies = make(map[string]string)
+		parsedPairs := 0
 		for i := 0; i < len(parts); i++ {
 			parts[i] = strings.TrimSpace(parts[i])
 			if len(parts[i]) == 0 {
@@ -203,21 +203,15 @@ func readCookies(h Header) []*Cookie {
 			if !isCookieNameValid(attr) {
 				continue
 			}
-			val, err := parseCookieValue(val)
-			if err != nil {
+			val, success := parseCookieValue(val)
+			if !success {
 				continue
 			}
-			lineCookies[attr] = val
+			cookies = append(cookies, &Cookie{Name: attr, Value: val})
+			parsedPairs++
 		}
-		if len(lineCookies) == 0 {
+		if parsedPairs == 0 {
 			unparsedLines = append(unparsedLines, line)
-		}
-		for n, v := range lineCookies {
-			cookies = append(cookies, &Cookie{
-				Name:   n,
-				Value:  v,
-				Raw:    line,
-			})
 		}
 	}
 	h["Cookie"] = unparsedLines, len(unparsedLines) > 0
@@ -249,7 +243,7 @@ func unquoteCookieValue(v string) string {
 	return v
 }
 
-func isCookieOctet(c int) bool {
+func isCookieByte(c byte) bool {
 	switch true {
 	case c == 0x21, 0x23 <= c && c <= 0x2b, 0x2d <= c && c <= 0x3a,
 		0x3c <= c && c <= 0x5b, 0x5d <= c && c <= 0x7e:
@@ -258,14 +252,14 @@ func isCookieOctet(c int) bool {
 	return false
 }
 
-func parseCookieValue(raw string) (string, os.Error) {
+func parseCookieValue(raw string) (string, bool) {
 	raw = unquoteCookieValue(raw)
-	for _, c := range raw {
-		if !isCookieOctet(c) {
-			return "", os.NewError("parse cookie value")
+	for i := 0; i < len(raw); i++ {
+		if !isCookieByte(raw[i]) {
+			return "", false
 		}
 	}
-	return raw, nil
+	return raw, true
 }
 
 func isCookieNameValid(raw string) bool {
