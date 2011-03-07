@@ -16,6 +16,7 @@ _obj
 _test
 src/pkg/Make.deps
 _testmain.go
+http/gg
 
 syntax:regexp
 ^pkg/
