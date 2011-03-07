@@ -53,9 +53,18 @@ func readSetCookies(h Header) []*Cookie {
 			continue
 		}
 		name, value := parts[0][:j], parts[0][j+1:]
+		if !isCookieNameValid(name) {
+			unparsedLines = append(unparsedLines, line)
+			continue
+		}
+		value, err := parseCookieValue(value)
+		if err != nil {
+			unparsedLines = append(unparsedLines, line)
+			continue
+		}
 		c := &Cookie{
 			Name:   name,
-			Value:  unquoteCookieValue(value),
+			Value:  value,
 			MaxAge: -1, // Not specified
 			Raw:    line,
 		}
@@ -68,6 +77,11 @@ func readSetCookies(h Header) []*Cookie {
 			attr, val := parts[i], ""
 			if j := strings.Index(attr, "="); j >= 0 {
 				attr, val = attr[:j], attr[j+1:]
+			}
+			val, err = parseCookieValue(val)
+			if err != nil {
+				c.Unparsed = append(c.Unparsed, parts[i])
+				continue
 			}
 			switch strings.ToLower(attr) {
 			case "secure":
@@ -177,6 +191,13 @@ func readCookies(h Header) []*Cookie {
 			if j := strings.Index(attr, "="); j >= 0 {
 				attr, val = attr[:j], attr[j+1:]
 			}
+			if !isCookieNameValid(attr) {
+				continue
+			}
+			val, err := parseCookieValue(val)
+			if err != nil {
+				continue
+			}
 			lineCookies[attr] = val
 		}
 		if len(lineCookies) == 0 {
@@ -185,7 +206,7 @@ func readCookies(h Header) []*Cookie {
 		for n, v := range lineCookies {
 			cookies = append(cookies, &Cookie{
 				Name:   n,
-				Value:  unquoteCookieValue(v),
+				Value:  v,
 				MaxAge: -1,
 				Raw:    line,
 			})
@@ -218,4 +239,32 @@ func unquoteCookieValue(v string) string {
 		return v[1 : len(v)-1]
 	}
 	return v
+}
+
+func isCookieOctet(c int) bool {
+	switch true {
+	case c == 0x21, 0x23 <= c && c <= 0x2b, 0x2d <= c && c <= 0x3a,
+		0x3c <= c && c <= 0x5b, 0x5d <= c && c <= 0x7e:
+		return true
+	}
+	return false
+}
+
+func parseCookieValue(raw string) (string, os.Error) {
+	raw = unquoteCookieValue(raw)
+	for _, c := range raw {
+		if !isCookieOctet(c) {
+			return "", os.NewError("parse cookie value")
+		}
+	}
+	return raw, nil
+}
+
+func isCookieNameValid(raw string) bool {
+	for _, c := range raw {
+		if !isToken(byte(c)) {
+			return false
+		}
+	}
+	return true
 }
