@@ -10,8 +10,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	. "github.com/petar/GoHTTP/http"
-	"github.com/petar/GoHTTP/http/httptest"
+	. "http"
+	"http/httptest"
 	"io/ioutil"
 	"os"
 	"net"
@@ -364,4 +364,45 @@ func TestIdentityResponse(t *testing.T) {
 		t.Fatalf("Expected output to end with %q; got response body %q",
 			expectedSuffix, string(got))
 	}
+}
+
+// TestServeHTTP10Close verifies that HTTP/1.0 requests won't be kept alive.
+func TestServeHTTP10Close(t *testing.T) {
+	s := httptest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+		ServeFile(w, r, "testdata/file")
+	}))
+	defer s.Close()
+
+	conn, err := net.Dial("tcp", "", s.Listener.Addr().String())
+	if err != nil {
+		t.Fatal("dial error:", err)
+	}
+	defer conn.Close()
+
+	_, err = fmt.Fprint(conn, "GET / HTTP/1.0\r\n\r\n")
+	if err != nil {
+		t.Fatal("print error:", err)
+	}
+
+	r := bufio.NewReader(conn)
+	_, err = ReadResponse(r, "GET")
+	if err != nil {
+		t.Fatal("ReadResponse error:", err)
+	}
+
+	success := make(chan bool)
+	go func() {
+		select {
+		case <-time.After(5e9):
+			t.Fatal("body not closed after 5s")
+		case <-success:
+		}
+	}()
+
+	_, err = ioutil.ReadAll(r)
+	if err != nil {
+		t.Fatal("read error:", err)
+	}
+
+	success <- true
 }

@@ -26,7 +26,7 @@ DIRS=\
 	http/cgi\
 	server\
 	template\
-	#api\
+	#restapi\
 
 TEST=\
 	$(filter-out $(NOTEST),$(DIRS))
