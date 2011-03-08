@@ -4,7 +4,7 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=github.com/petar/GoHTTP/api
+TARG=github.com/petar/GoHTTP/restapi
 GOFILES=\
 	server.go\
 
