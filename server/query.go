@@ -18,13 +18,14 @@ type Query struct {
 	srv      *Server
 	ssc      *stampedServerConn
 	req      *http.Request
+	ext      map[string]interface{} // Extension-specific structures
 	err      os.Error
-	fwd      bool	// If true, the user has already called either Continue() or Hijack()
+	fwd      bool	                // If true, the user has already called either Continue() or Hijack()
 	hijacked bool
 }
 
 func newQueryErr(err os.Error) *Query {
-	return &Query{nil, nil, nil, err, false, false}
+	return &Query{nil, nil, nil, nil, err, false, false}
 }
 
 
@@ -36,6 +37,10 @@ func (q *Query) GetRequest() *http.Request { return q.req }
 
 func (q *Query) GetPath() string { 
 	return path.Clean(q.req.URL.Path)
+}
+
+func (q *Query) SetPath(p string) {
+	q.req.URL.Path = p
 }
 
 // Continue() indicates to the Server that it can continue

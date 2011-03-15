@@ -22,8 +22,6 @@ all: install
 DIRS=\
      	util\
 	http\
-	http/httptest\
-	http/cgi\
 	server\
 	template\
 	#restapi\

@@ -11,5 +11,8 @@ GOFILES=\
 	server.go\
 	stamped.go\
 	stat.go\
+	ext.go\
+	sub.go\
+	sub-static.go\
 
 include $(GOROOT)/src/Make.pkg

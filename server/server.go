@@ -10,11 +10,9 @@ import (
 	"log"
 	"net"
 	"os"
-	"path"
 	"strings"
 	"sync"
 	"time"
-	"github.com/petar/GoHTTP/http"
 	"github.com/petar/GoHTTP/util"
 )
 
@@ -24,27 +22,30 @@ import (
 // makes sure that a pre-specified limit of active connections (i.e.
 // file descriptors) is not exceeded.
 type Server struct {
-	tmo    int64 // keepalive timout
+	sync.Mutex	// protects listen and conns
+
+	// Real-time state
 	listen net.Listener
 	conns  map[*stampedServerConn]int
 	qch    chan *Query
 	fdl    util.FDLimiter
-	lk     sync.Mutex
+	subs   []subserver
+
 	config Config // Server configuration
-	stats  Stats
+	stats  Stats  // Real-time statistics
 }
 
 // NewServer creates a new Server which listens for connections on l.
 // New connections are automatically managed by ServerConn objects with
 // timout set to tmo nanoseconds. The Server object ensures that at no
 // time more than fdlim file descriptors are allocated to incoming connections.
-func NewServer(l net.Listener, tmo int64, fdlim int) *Server {
-	if tmo < 2 {
+func NewServer(l net.Listener, config Config, fdlim int) *Server {
+	if config.Timeout < 2 {
 		panic("timeout too small")
 	}
 	// TODO(petar): Perhaps a better design passes the FDLimiter as a parameter
 	srv := &Server{
-		tmo:    tmo,
+		config: config,
 		listen: l,
 		conns:  make(map[*stampedServerConn]int),
 		qch:    make(chan *Query),
@@ -61,33 +62,27 @@ func NewServerEasy(addr string) (*Server, os.Error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewServer(l, 5e9, 200), nil
-}
-
-func (srv *Server) SetStatic(urlPrefix, localPath string) os.Error {
-	srv.config.StaticURL = urlPrefix
-	srv.config.StaticPath = localPath
-	return nil
+	return NewServer(l, Config{5e9}, 200), nil
 }
 
 func (srv *Server) GetFDLimiter() *util.FDLimiter { return &srv.fdl }
 
 func (srv *Server) expireLoop() {
 	for i := 0; ; i++ {
-		srv.lk.Lock()
+		srv.Lock()
 		if srv.listen == nil {
-			srv.lk.Unlock()
+			srv.Unlock()
 			return
 		}
 		now := time.Nanoseconds()
 		kills := list.New()
 		for ssc, _ := range srv.conns {
-			if now-ssc.GetStamp() >= srv.tmo {
+			if now - ssc.GetStamp() >= srv.config.Timeout {
 				kills.PushBack(ssc)
 				srv.stats.IncExpireConn()
 			}
 		}
-		srv.lk.Unlock()
+		srv.Unlock()
 		elm := kills.Front()
 		for elm != nil {
 			ssc := elm.Value.(*stampedServerConn)
@@ -96,7 +91,7 @@ func (srv *Server) expireLoop() {
 		}
 		kills.Init()
 		kills = nil
-		time.Sleep(srv.tmo)
+		time.Sleep(srv.config.Timeout)
 		if i % 4 == 0 {
 			log.Println(srv.stats.SummaryLine())
 		}
@@ -105,9 +100,9 @@ func (srv *Server) expireLoop() {
 
 func (srv *Server) acceptLoop() {
 	for {
-		srv.lk.Lock()
+		srv.Lock()
 		l := srv.listen
-		srv.lk.Unlock()
+		srv.Unlock()
 		if l == nil {
 			return
 		}
@@ -123,7 +118,7 @@ func (srv *Server) acceptLoop() {
 		}
 		srv.stats.IncAcceptConn()
 		c.(*net.TCPConn).SetKeepAlive(true)
-		err = c.SetReadTimeout(srv.tmo)
+		err = c.SetReadTimeout(srv.config.Timeout)
 		if err != nil {
 			c.Close()
 			srv.fdl.Unlock()
@@ -148,13 +143,13 @@ func (srv *Server) acceptLoop() {
 // outstanding queries.
 func (srv *Server) Read() (query *Query, err os.Error) {
 	for {
-		q := <-srv.qch
-		srv.lk.Lock()
-		if closed(srv.qch) {
-			srv.lk.Unlock()
+		q, ok := <-srv.qch
+		srv.Lock()
+		if !ok {
+			srv.Unlock()
 			return nil, os.EBADF
 		}
-		srv.lk.Unlock()
+		srv.Unlock()
 		if err = q.getError(); err != nil {
 			return nil, err
 		}
@@ -166,21 +161,25 @@ func (srv *Server) Read() (query *Query, err os.Error) {
 	panic("unreach")
 }
 
+func (srv *Server) AddSub(url string, sub Subserver) {
+	srv.Lock()
+	defer srv.Unlock()
+	srv.subs = append(srv.subs, subserver{url, sub})
+}
+
 func (srv *Server) dispatch(q *Query) *Query {
-	req := q.GetRequest()
-	if req.Method != "GET" {
-		return q
-	}
+	srv.Lock()
+	defer srv.Unlock()
+
 	p := q.GetPath()
-	surl := srv.config.StaticURL 
-	if surl == "" || !strings.HasPrefix(p, surl) {
-		return q
+	for _, sub := range srv.subs {
+		if strings.HasPrefix(p, sub.SubURL) {
+			q.SetPath(p[len(sub.SubURL):])
+			sub.Subserver.Serve(q)
+			return nil
+		}
 	}
-	p = p[len(surl):]
-	full := path.Join(srv.config.StaticPath, p)
-	resp, _ := http.NewResponseFile(full)
-	q.ContinueAndWrite(resp)
-	return nil
+	return q
 }
 
 func (srv *Server) read(ssc *stampedServerConn) {
@@ -200,18 +199,15 @@ func (srv *Server) read(ssc *stampedServerConn) {
 			srv.bury(ssc)
 			return
 		}
-		srv.qch <- &Query{srv, ssc, req, nil, false, false}
+		srv.qch <- &Query{srv, ssc, req, nil, nil, false, false}
 		srv.stats.IncRequest()
 		return
 	}
 }
 
 func (srv *Server) register(ssc *stampedServerConn) bool {
-	srv.lk.Lock()
-	defer srv.lk.Unlock()
-	if closed(srv.qch) {
-		return false
-	}
+	srv.Lock()
+	defer srv.Unlock()
 	if _, present := srv.conns[ssc]; present {
 		panic("register twice")
 	}
@@ -220,8 +216,8 @@ func (srv *Server) register(ssc *stampedServerConn) bool {
 }
 
 func (srv *Server) unregister(ssc *stampedServerConn) {
-	srv.lk.Lock()
-	defer srv.lk.Unlock()
+	srv.Lock()
+	defer srv.Unlock()
 	srv.conns[ssc] = 0, false
 }
 
@@ -238,16 +234,16 @@ func (srv *Server) bury(ssc *stampedServerConn) {
 // or Query methods after a call to Shutdown.
 func (srv *Server) Shutdown() (err os.Error) {
 	// First, close the listener
-	srv.lk.Lock()
+	srv.Lock()
 	var l net.Listener
 	l, srv.listen = srv.listen, nil
 	close(srv.qch)
-	srv.lk.Unlock()
+	srv.Unlock()
 	if l != nil {
 		err = l.Close()
 	}
 	// Then, force-close all open connections
-	srv.lk.Lock()
+	srv.Lock()
 	for ssc, _ := range srv.conns {
 		c, _ := ssc.Close()
 		if c != nil {
@@ -255,6 +251,6 @@ func (srv *Server) Shutdown() (err os.Error) {
 		}
 		srv.conns[ssc] = 0, false
 	}
-	srv.lk.Unlock()
+	srv.Unlock()
 	return
 }

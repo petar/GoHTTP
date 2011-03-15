@@ -4,6 +4,11 @@
 
 package server
 
-type Config struct {
-	Timeout    int64	// Keep-alive timeout in nanoseconds
+type subserver struct {
+	SubURL    string
+	Subserver Subserver
+}
+
+type Subserver interface {
+	Serve(q *Query)
 }

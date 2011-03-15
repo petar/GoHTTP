@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"os"
 	"net"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -144,7 +145,7 @@ func TestConsumingBodyOnNextConn(t *testing.T) {
 type stringHandler string
 
 func (s stringHandler) ServeHTTP(w ResponseWriter, r *Request) {
-	w.SetHeader("Result", string(s))
+	w.Header().Set("Result", string(s))
 }
 
 var handlers = []struct {
@@ -216,7 +217,7 @@ func TestMuxRedirectLeadingSlashes(t *testing.T) {
 
 		mux.ServeHTTP(resp, req)
 
-		if loc, expected := resp.Header.Get("Location"), "/foo.txt"; loc != expected {
+		if loc, expected := resp.Header().Get("Location"), "/foo.txt"; loc != expected {
 			t.Errorf("Expected Location header set to %q; got %q", expected, loc)
 			return
 		}
@@ -229,6 +230,7 @@ func TestMuxRedirectLeadingSlashes(t *testing.T) {
 }
 
 func TestServerTimeouts(t *testing.T) {
+	// TODO(bradfitz): convert this to use httptest.Server
 	l, err := net.ListenTCP("tcp", &net.TCPAddr{Port: 0})
 	if err != nil {
 		t.Fatalf("listen error: %v", err)
@@ -294,8 +296,8 @@ func TestServerTimeouts(t *testing.T) {
 // TestIdentityResponse verifies that a handler can unset 
 func TestIdentityResponse(t *testing.T) {
 	handler := HandlerFunc(func(rw ResponseWriter, req *Request) {
-		rw.SetHeader("Content-Length", "3")
-		rw.SetHeader("Transfer-Encoding", req.FormValue("te"))
+		rw.Header().Set("Content-Length", "3")
+		rw.Header().Set("Transfer-Encoding", req.FormValue("te"))
 		switch {
 		case req.FormValue("overwrite") == "1":
 			_, err := rw.Write([]byte("foo TOO LONG"))
@@ -303,7 +305,7 @@ func TestIdentityResponse(t *testing.T) {
 				t.Errorf("expected ErrContentLength; got %v", err)
 			}
 		case req.FormValue("underwrite") == "1":
-			rw.SetHeader("Content-Length", "500")
+			rw.Header().Set("Content-Length", "500")
 			rw.Write([]byte("too short"))
 		default:
 			rw.Write([]byte("foo"))
@@ -405,4 +407,46 @@ func TestServeHTTP10Close(t *testing.T) {
 	}
 
 	success <- true
+}
+
+func TestSetsRemoteAddr(t *testing.T) {
+	ts := httptest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+		fmt.Fprintf(w, "%s", r.RemoteAddr)
+	}))
+	defer ts.Close()
+
+	res, _, err := Get(ts.URL)
+	if err != nil {
+		t.Fatalf("Get error: %v", err)
+	}
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("ReadAll error: %v", err)
+	}
+	ip := string(body)
+	if !strings.HasPrefix(ip, "127.0.0.1:") && !strings.HasPrefix(ip, "[::1]:") {
+		t.Fatalf("Expected local addr; got %q", ip)
+	}
+}
+
+func TestChunkedResponseHeaders(t *testing.T) {
+	ts := httptest.NewServer(HandlerFunc(func(w ResponseWriter, r *Request) {
+		w.Header().Set("Content-Length", "intentional gibberish") // we check that this is deleted
+		fmt.Fprintf(w, "I am a chunked response.")
+	}))
+	defer ts.Close()
+
+	res, _, err := Get(ts.URL)
+	if err != nil {
+		t.Fatalf("Get error: %v", err)
+	}
+	if g, e := res.ContentLength, int64(-1); g != e {
+		t.Errorf("expected ContentLength of %d; got %d", e, g)
+	}
+	if g, e := res.TransferEncoding, []string{"chunked"}; !reflect.DeepEqual(g, e) {
+		t.Errorf("expected TransferEncoding of %v; got %v", e, g)
+	}
+	if _, haveCL := res.Header["Content-Length"]; haveCL {
+		t.Errorf("Unexpected Content-Length")
+	}
 }
