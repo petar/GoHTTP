@@ -4,14 +4,8 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=github.com/petar/GoHTTP/server
+TARG=github.com/petar/GoHTTP/server/subs
 GOFILES=\
-	config.go\
-	query.go\
-	server.go\
-	stamped.go\
-	stat.go\
-	ext.go\
-	sub.go\
+	sub-static.go\
 
 include $(GOROOT)/src/Make.pkg

@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package server
+package subs
 
 import (
 	"path"
 	"github.com/petar/GoHTTP/http"
+	"github.com/petar/GoHTTP/server"
 )
 
 // StaticSub is a Sub that serves static files from a given directory.
@@ -18,7 +19,7 @@ func NewStaticSub(staticPath string) *StaticSub {
 	return &StaticSub{staticPath}
 }
 
-func (ss *StaticSub) Serve(q *Query) {
+func (ss *StaticSub) Serve(q *server.Query) {
 	req := q.Req
 	if req.Method != "GET" {
 		q.ContinueAndWrite(http.NewResponse404())

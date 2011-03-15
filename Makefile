@@ -23,6 +23,7 @@ DIRS=\
      	util\
 	http\
 	server\
+	server/subs\
 	template\
 	#restapi\
 
