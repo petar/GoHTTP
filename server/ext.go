@@ -9,8 +9,7 @@ import (
 	"github.com/petar/GoHTTP/http"
 )
 
-// An Extension is a piece of server-side logic that can perform
-// a few functions. It can claim a URL-subspace and it can attach
+// An Extension is a module of server-side logic that can attach
 // itself to the header processing chains for incoming requests
 // and outgoing respones.
 type Extension interface {
@@ -18,8 +17,8 @@ type Extension interface {
 	WriteResponse(resp *http.Response, ext map[string]interface{}) os.Error
 }
 
-type ExtensionConfig struct {
-	Name             string
-	RequestSubspace  string
-	ResponseSubspace string
+type extcfg struct {
+	Name   string
+	SubURL string
+	Ext    Extension
 }

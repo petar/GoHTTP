@@ -13,12 +13,12 @@ import (
 // Stats maintains server statistics and methods for
 // querying into them.
 type Stats struct {
-	TimeStarted       int64  // Time server started
-	RequestCount      uint64 // Number of request successfully received
-	ResponseCount     uint64 // Number of responses successfully received
-	ExpireConnCount   uint64 // Number of connections, expired by the server
-	AcceptConnCount   uint64
-	lk                sync.Mutex
+	TimeStarted     int64  // Time server started
+	RequestCount    uint64 // Number of request successfully received
+	ResponseCount   uint64 // Number of responses successfully received
+	ExpireConnCount uint64 // Number of connections, expired by the server
+	AcceptConnCount uint64
+	lk              sync.Mutex
 }
 
 func (s *Stats) Init() {
@@ -52,7 +52,7 @@ func (s *Stats) IncAcceptConn() {
 func (s *Stats) SummaryLine() string {
 	s.lk.Lock()
 	defer s.lk.Unlock()
-	return fmt.Sprintf("Running %d mins, %d accept, %d expire, %d req, %d resp", 
-		(time.Nanoseconds() - s.TimeStarted) / (60*1e9), 
+	return fmt.Sprintf("Running %d mins, %d accept, %d expire, %d req, %d resp",
+		(time.Nanoseconds()-s.TimeStarted)/(60*1e9),
 		s.AcceptConnCount, s.ExpireConnCount, s.RequestCount, s.ResponseCount)
 }

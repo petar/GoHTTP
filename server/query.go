@@ -6,7 +6,7 @@ package server
 
 import (
 	"os"
-	"path"
+	"strings"
 	"github.com/petar/GoHTTP/http"
 )
 
@@ -15,33 +15,20 @@ import (
 // underlying ServerConn, which is typically needed for CONNECT
 // requests.
 type Query struct {
+	Req *http.Request
+	Ext map[string]interface{} // Extension-specific structures
+
+	origPath string
 	srv      *Server
 	ssc      *stampedServerConn
-	req      *http.Request
-	ext      map[string]interface{} // Extension-specific structures
 	err      os.Error
-	fwd      bool	                // If true, the user has already called either Continue() or Hijack()
+	fwd      bool // If true, the user has already called either Continue() or Hijack()
 	hijacked bool
 }
 
-func newQueryErr(err os.Error) *Query {
-	return &Query{nil, nil, nil, nil, err, false, false}
-}
-
+func newQueryErr(err os.Error) *Query { return &Query{err: err} }
 
 func (q *Query) getError() os.Error { return q.err }
-
-// GetRequest() returns the underlying request. The result
-// is never nil.
-func (q *Query) GetRequest() *http.Request { return q.req }
-
-func (q *Query) GetPath() string { 
-	return path.Clean(q.req.URL.Path)
-}
-
-func (q *Query) SetPath(p string) {
-	q.req.URL.Path = p
-}
 
 // Continue() indicates to the Server that it can continue
 // listening for incoming requests on the ServerConn that
@@ -54,7 +41,7 @@ func (q *Query) Continue() {
 	}
 	q.fwd = true
 	if q.srv == nil {
-		panic("query zombie")	// XXX: To be removed when issue 1563 fixed
+		panic("query zombie") // XXX: To be removed when issue 1563 fixed
 	}
 	go q.srv.read(q.ssc)
 }
@@ -82,8 +69,25 @@ func (q *Query) Hijack() *http.ServerConn {
 // Any non-nil error returned pertains to the ServerConn and not
 // to the Server as a whole.
 func (q *Query) Write(resp *http.Response) (err os.Error) {
-	req := q.req
-	q.req = nil
+	req := q.Req
+	q.Req = nil
+	ext := q.Ext
+	q.Ext = nil
+
+	// Invoke extensions in reverse order
+	p := q.origPath
+	extch := q.srv.extRevIter()
+	for ec, ok := <-extch; ok; ec, ok = <-extch {
+		if strings.HasPrefix(p, ec.SubURL) {
+			if err := ec.Ext.WriteResponse(resp, ext); err != nil {
+				q.srv.bury(q.ssc)
+				q.ssc = nil
+				q.srv = nil
+				return
+			}
+		}
+	}
+
 	err = q.ssc.Write(req, resp)
 	if err != nil {
 		q.srv.bury(q.ssc)

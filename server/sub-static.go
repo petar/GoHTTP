@@ -19,12 +19,12 @@ func NewStaticSub(staticPath string) *StaticSub {
 }
 
 func (ss *StaticSub) Serve(q *Query) {
-	req := q.GetRequest()
+	req := q.Req
 	if req.Method != "GET" {
 		q.ContinueAndWrite(http.NewResponse404())
 		return
 	}
-	p := q.GetPath()
+	p := req.URL.Path
 	if len(p) == 0 {
 		p = "index.html"
 	} else if p[0] == '/' {

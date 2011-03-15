@@ -22,14 +22,15 @@ import (
 // makes sure that a pre-specified limit of active connections (i.e.
 // file descriptors) is not exceeded.
 type Server struct {
-	sync.Mutex	// protects listen and conns
+	sync.Mutex // protects listen and conns
 
 	// Real-time state
 	listen net.Listener
 	conns  map[*stampedServerConn]int
 	qch    chan *Query
 	fdl    util.FDLimiter
-	subs   []subcfg
+	subs   []*subcfg
+	exts   []*extcfg
 
 	config Config // Server configuration
 	stats  Stats  // Real-time statistics
@@ -77,7 +78,7 @@ func (srv *Server) expireLoop() {
 		now := time.Nanoseconds()
 		kills := list.New()
 		for ssc, _ := range srv.conns {
-			if now - ssc.GetStamp() >= srv.config.Timeout {
+			if now-ssc.GetStamp() >= srv.config.Timeout {
 				kills.PushBack(ssc)
 				srv.stats.IncExpireConn()
 			}
@@ -92,7 +93,7 @@ func (srv *Server) expireLoop() {
 		kills.Init()
 		kills = nil
 		time.Sleep(srv.config.Timeout)
-		if i % 4 == 0 {
+		if i%4 == 0 {
 			log.Println(srv.stats.SummaryLine())
 		}
 	}
@@ -153,7 +154,7 @@ func (srv *Server) Read() (query *Query, err os.Error) {
 		if err = q.getError(); err != nil {
 			return nil, err
 		}
-		q = srv.dispatch(q)
+		q = srv.process(q)
 		if q != nil {
 			return q, nil
 		}
@@ -164,21 +165,88 @@ func (srv *Server) Read() (query *Query, err os.Error) {
 func (srv *Server) AddSub(url string, sub Sub) {
 	srv.Lock()
 	defer srv.Unlock()
-	srv.subs = append(srv.subs, subcfg{url, sub})
+	srv.subs = append(srv.subs, &subcfg{url, sub})
 }
 
-func (srv *Server) dispatch(q *Query) *Query {
+func (srv *Server) AddExt(name, url string, ext Extension) {
+	srv.Lock()
+	defer srv.Unlock()
+	srv.exts = append(srv.exts, &extcfg{name, url, ext})
+}
+
+func (srv *Server) subIter() chan *subcfg {
 	srv.Lock()
 	defer srv.Unlock()
 
-	p := q.GetPath()
-	for _, sub := range srv.subs {
-		if strings.HasPrefix(p, sub.SubURL) {
-			q.SetPath(p[len(sub.SubURL):])
-			sub.Sub.Serve(q)
+	ss := make([]*subcfg, len(srv.subs))
+	copy(ss, srv.subs)
+	ch := make(chan *subcfg)
+	go func() {
+		for _, s := range ss {
+			ch <- s
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (srv *Server) extIter() chan *extcfg {
+	srv.Lock()
+	defer srv.Unlock()
+
+	ee := make([]*extcfg, len(srv.exts))
+	copy(ee, srv.exts)
+	ch := make(chan *extcfg)
+	go func() {
+		for _, e := range ee {
+			ch <- e
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (srv *Server) extRevIter() chan *extcfg {
+	srv.Lock()
+	defer srv.Unlock()
+
+	ee := make([]*extcfg, len(srv.exts))
+	copy(ee, srv.exts)
+	ch := make(chan *extcfg)
+	go func() {
+		for i := 0; i < len(ee); i++ {
+			ch <- ee[len(ee)-i-1]
+		}
+		close(ch)
+	}()
+	return ch
+}
+
+func (srv *Server) process(q *Query) *Query {
+
+	// Apply extensions
+	p := q.origPath
+	q.Ext = make(map[string]interface{})
+	extch := srv.extIter()
+	for ec, ok := <-extch; ok; ec, ok = <-extch {
+		if strings.HasPrefix(p, ec.SubURL) {
+			if err := ec.Ext.ReadRequest(q.Req, q.Ext); err != nil {
+				return nil
+			}
+		}
+	}
+
+	// Serve using a sub?
+	p = q.Req.URL.Path
+	subch := srv.subIter()
+	for sc, ok := <-subch; ok; sc, ok = <-subch {
+		if strings.HasPrefix(p, sc.SubURL) {
+			q.Req.URL.Path = p[len(sc.SubURL):]
+			sc.Sub.Serve(q)
 			return nil
 		}
 	}
+
 	return q
 }
 
@@ -199,7 +267,12 @@ func (srv *Server) read(ssc *stampedServerConn) {
 			srv.bury(ssc)
 			return
 		}
-		srv.qch <- &Query{srv, ssc, req, nil, nil, false, false}
+		srv.qch <- &Query{
+			Req:      req,
+			srv:      srv,
+			ssc:      ssc,
+			origPath: req.URL.Path,
+		}
 		srv.stats.IncRequest()
 		return
 	}

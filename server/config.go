@@ -5,5 +5,5 @@
 package server
 
 type Config struct {
-	Timeout    int64	// Keep-alive timeout in nanoseconds
+	Timeout int64 // Keep-alive timeout in nanoseconds
 }
