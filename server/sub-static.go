@@ -9,16 +9,16 @@ import (
 	"github.com/petar/GoHTTP/http"
 )
 
-// StaticSubserver is a Subserver that serves static files from a given directory.
-type StaticSubserver struct {
+// StaticSub is a Sub that serves static files from a given directory.
+type StaticSub struct {
 	staticPath string
 }
 
-func NewStaticSubserver(staticPath string) *StaticSubserver {
-	return &StaticSubserver{staticPath}
+func NewStaticSub(staticPath string) *StaticSub {
+	return &StaticSub{staticPath}
 }
 
-func (ss *StaticSubserver) Serve(q *Query) {
+func (ss *StaticSub) Serve(q *Query) {
 	req := q.GetRequest()
 	if req.Method != "GET" {
 		q.ContinueAndWrite(http.NewResponse404())

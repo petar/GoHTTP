@@ -4,11 +4,11 @@
 
 package server
 
-type subserver struct {
-	SubURL    string
-	Subserver Subserver
+type subcfg struct {
+	SubURL string
+	Sub    Sub
 }
 
-type Subserver interface {
+type Sub interface {
 	Serve(q *Query)
 }

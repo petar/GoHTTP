@@ -29,7 +29,7 @@ type Server struct {
 	conns  map[*stampedServerConn]int
 	qch    chan *Query
 	fdl    util.FDLimiter
-	subs   []subserver
+	subs   []subcfg
 
 	config Config // Server configuration
 	stats  Stats  // Real-time statistics
@@ -161,10 +161,10 @@ func (srv *Server) Read() (query *Query, err os.Error) {
 	panic("unreach")
 }
 
-func (srv *Server) AddSub(url string, sub Subserver) {
+func (srv *Server) AddSub(url string, sub Sub) {
 	srv.Lock()
 	defer srv.Unlock()
-	srv.subs = append(srv.subs, subserver{url, sub})
+	srv.subs = append(srv.subs, subcfg{url, sub})
 }
 
 func (srv *Server) dispatch(q *Query) *Query {
@@ -175,7 +175,7 @@ func (srv *Server) dispatch(q *Query) *Query {
 	for _, sub := range srv.subs {
 		if strings.HasPrefix(p, sub.SubURL) {
 			q.SetPath(p[len(sub.SubURL):])
-			sub.Subserver.Serve(q)
+			sub.Sub.Serve(q)
 			return nil
 		}
 	}
