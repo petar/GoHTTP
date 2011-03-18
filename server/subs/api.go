@@ -2,16 +2,18 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package api
+package subs
 
 import (
 	"json"
 	"os"
 	"path"
+	"reflect"
 	"rpc"
 	"strconv"
 	"strings"
 	"sync"
+	"github.com/petar/GoHTTP/http"
 	"github.com/petar/GoHTTP/server"
 )
 
@@ -90,21 +92,23 @@ func (qx *queryCodec) ReadRequestBody(body interface{}) os.Error {
 }
 
 func (qx *queryCodec) WriteResponse(resp *rpc.Response, body interface{}) os.Error {
+	defer func(){ qx.Query = nil }()
+
 	if resp.Error != "" {
-		return q.Write(http.NewResponse400String(resp.Error))
+		return qx.Query.Write(http.NewResponse400String(resp.Error))
 	}
 	buf, err := json.Marshal(body) 
 	if err != nil {
-		q.Write(http.NewResponse500())
+		qx.Query.Write(http.NewResponse500())
 		return ErrCodec
 	}
-	return q.Write(http.NewResponse200Bytes(buf))
+	return qx.Query.Write(http.NewResponse200Bytes(buf))
 }
 
 func (qx *queryCodec) Close() os.Error { return nil }
 
 func pathToServiceMethod(p string) string {
-	p := path.Clean(p)
+	p = path.Clean(p)
 	if p != "" && p[0] == '/' {
 		p = p[1:]
 	}
