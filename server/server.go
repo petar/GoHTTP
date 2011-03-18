@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/petar/GoHTTP/http"
 	"github.com/petar/GoHTTP/util"
 )
 
@@ -158,6 +159,17 @@ func (srv *Server) Read() (query *Query, err os.Error) {
 		if q != nil {
 			return q, nil
 		}
+	}
+	panic("unreach")
+}
+
+func (srv *Server) Launch() os.Error {
+	for {
+		q, err := srv.Read()
+		if err != nil {
+			return err
+		}
+		q.ContinueAndWrite(http.NewResponse404())
 	}
 	panic("unreach")
 }

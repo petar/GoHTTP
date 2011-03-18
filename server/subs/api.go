@@ -71,6 +71,9 @@ func (qx *queryCodec) ReadRequestHeader(req *rpc.Request) os.Error {
 	if qx.Query == nil {
 		return os.EOF
 	}
+	if qx.Query.Req == nil {
+		panic("urgh")
+	}
 	if qx.Query.Req.Body != nil {
 		qx.Query.Req.Body.Close() // Discard HTTP body. Only GET requests supported currently.
 	}

@@ -25,7 +25,6 @@ DIRS=\
 	server\
 	server/subs\
 	template\
-	api\
 
 TEST=\
 	$(filter-out $(NOTEST),$(DIRS))
