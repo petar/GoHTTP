@@ -16,6 +16,20 @@ func NewResponse200() *Response {
 	}
 }
 
+func NewResponse200Bytes(b []byte) *Response {
+	return &Response{
+		Status:        "OK",
+		StatusCode:    200,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		RequestMethod: "GET",
+		Body:          NewBodyBytes(b),
+		ContentLength: int64(len(b)),
+		Close:         false,
+	}
+}
+
 func NewResponse200CONNECT() *Response {
 	return &Response{
 		Status:        "Connection Established",
@@ -26,6 +40,26 @@ func NewResponse200CONNECT() *Response {
 		RequestMethod: "CONNECT",
 		Close:         false,
 		Header:        Header{"Proxy-Agent": []string{"Go-HTTP-package"}},
+	}
+}
+
+func NewResponse500() *Response {
+	html := "<html>" +
+		"<head><title>500 Internal Server Error</title></head>\n" +
+		"<body bgcolor=\"white\">\n" +
+		"<center><h1>500 Internal Server Error</h1></center>\n" +
+		"<hr><center>Go HTTP package</center>\n" +
+		"</body></html>"
+	return &Response{
+		Status:        "Internal Server Error",
+		StatusCode:    500,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		RequestMethod: "GET",
+		Body:          NewBodyString(html),
+		ContentLength: int64(len(html)),
+		Close:         false,
 	}
 }
 
@@ -65,6 +99,20 @@ func NewResponse400() *Response {
 		RequestMethod: "GET",
 		Body:          NewBodyString(html),
 		ContentLength: int64(len(html)),
+		Close:         false,
+	}
+}
+
+func NewResponse400String(body string) *Response {
+	return &Response{
+		Status:        "Bad Request",
+		StatusCode:    400,
+		Proto:         "HTTP/1.1",
+		ProtoMajor:    1,
+		ProtoMinor:    1,
+		RequestMethod: "GET",
+		Body:          NewBodyString(body),
+		ContentLength: int64(len(body)),
 		Close:         false,
 	}
 }

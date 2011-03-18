@@ -22,10 +22,10 @@ type NopCloser struct {
 func (NopCloser) Close() os.Error { return nil }
 
 // NewBodyString converts a string to an io.ReadCloser.
-func NewBodyString(s string) io.ReadCloser {
-	b := bytes.NewBufferString(s)
-	return NopCloser{b}
-}
+func NewBodyString(s string) io.ReadCloser { return NopCloser{bytes.NewBufferString(s)} }
+
+// NewBodyBytes converts a byte slice to an io.ReadCloser.
+func NewBodyBytes(b []byte) io.ReadCloser { return NopCloser{bytes.NewBuffer(b)} }
 
 func NewBodyFile(filename string) (io.ReadCloser, os.Error) {
 	f, err := ioutil.ReadFile(filename)

@@ -6,6 +6,7 @@ include $(GOROOT)/src/Make.inc
 
 TARG=github.com/petar/GoHTTP/server/subs
 GOFILES=\
-	sub-static.go\
+	static.go\
+	api.go\
 
 include $(GOROOT)/src/Make.pkg

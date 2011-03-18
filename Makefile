@@ -25,7 +25,7 @@ DIRS=\
 	server\
 	server/subs\
 	template\
-	#restapi\
+	api\
 
 TEST=\
 	$(filter-out $(NOTEST),$(DIRS))
