@@ -24,39 +24,43 @@ import (
 // with return values in the form of a JSON object in the response
 // body.
 type APISub struct {
-	rpc *rpc.Server // does not need locking, since re-entrant
-	sync.Mutex  // protects auto
-	auto  uint64
+	rpcs       *rpc.Server // does not need locking, since re-entrant
+	sync.Mutex             // protects auto
+	auto       uint64
 }
 
 func NewAPISub() *APISub {
 	return &APISub{
-		rpc:   rpc.NewServer(),
-		auto:  1, // Start seq numbers from 1, so that 0 is always an invalid seq number
+		rpcs: rpc.NewServer(),
+		auto: 1, // Start seq numbers from 1, so that 0 is always an invalid seq number
 	}
 }
 
 func (api *APISub) Register(rcvr interface{}) os.Error {
-	return api.rpc.Register(rcvr)
+	return api.rpcs.Register(rcvr)
 }
 
 func (api *APISub) RegisterName(name string, rcvr interface{}) os.Error {
-	return api.rpc.RegisterName(name, rcvr)
+	return api.rpcs.RegisterName(name, rcvr)
 }
 
 func (api *APISub) Serve(q *server.Query) {
-	qx := &queryCodec{ Query: q }
+	qx := &queryCodec{Query: q}
 	api.Lock()
 	qx.seq = api.auto
 	api.auto++
 	api.Unlock()
 	q.Continue()
-	go api.rpc.ServeCodec(qx)
+	go api.rpcs.ServeCodec(qx)
 }
 
 // httpCodec is an rpc.ServerCodec for the APISub server
 type queryCodec struct {
 	*server.Query
+
+	// seq is not protected by a mutex because it is accessed only inside
+	// the read methods, which are guaranteed to be called sequentially
+	// by rpc.Server
 	seq uint64
 }
 
@@ -68,11 +72,8 @@ type queryCodec struct {
 // only if ReadRequestBody returns no error.
 
 func (qx *queryCodec) ReadRequestHeader(req *rpc.Request) os.Error {
-	if qx.Query == nil {
+	if qx.seq == 0 {
 		return os.EOF
-	}
-	if qx.Query.Req == nil {
-		panic("urgh")
 	}
 	if qx.Query.Req.Body != nil {
 		qx.Query.Req.Body.Close() // Discard HTTP body. Only GET requests supported currently.
@@ -84,6 +85,9 @@ func (qx *queryCodec) ReadRequestHeader(req *rpc.Request) os.Error {
 
 // ReadRequestBody parses the URL for the AJAX parameters
 func (qx *queryCodec) ReadRequestBody(body interface{}) os.Error {
+	defer func() {
+		qx.seq = 0
+	}()
 	if body == nil {
 		return nil
 	}
@@ -95,12 +99,10 @@ func (qx *queryCodec) ReadRequestBody(body interface{}) os.Error {
 }
 
 func (qx *queryCodec) WriteResponse(resp *rpc.Response, body interface{}) os.Error {
-	defer func(){ qx.Query = nil }()
-
 	if resp.Error != "" {
 		return qx.Query.Write(http.NewResponse400String(resp.Error))
 	}
-	buf, err := json.Marshal(body) 
+	buf, err := json.Marshal(body)
 	if err != nil {
 		qx.Query.Write(http.NewResponse500())
 		return ErrCodec
@@ -182,4 +184,3 @@ func decodeMap(m map[string][]string, v interface{}) os.Error {
 
 	return nil
 }
-

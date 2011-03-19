@@ -238,6 +238,7 @@ func (srv *Server) process(q *Query) *Query {
 
 	// Apply extensions
 	p := q.origPath
+	/*
 	q.Ext = make(map[string]interface{})
 	extch := srv.extIter()
 	for ec, ok := <-extch; ok; ec, ok = <-extch {
@@ -247,6 +248,7 @@ func (srv *Server) process(q *Query) *Query {
 			}
 		}
 	}
+	*/
 
 	// Serve using a sub?
 	p = q.Req.URL.Path

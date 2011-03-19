@@ -124,6 +124,10 @@ func NewResponse404() *Response {
 		"<center><h1>404 Not found</h1></center>\n" +
 		"<hr><center>Go HTTP package</center>\n" +
 		"</body></html>"
+	return NewResponse404String(html)
+}
+
+func NewResponse404String(s string) *Response {
 	return &Response{
 		Status:        "Not found",
 		StatusCode:    404,
@@ -131,8 +135,8 @@ func NewResponse404() *Response {
 		ProtoMajor:    1,
 		ProtoMinor:    1,
 		RequestMethod: "GET",
-		Body:          NewBodyString(html),
-		ContentLength: int64(len(html)),
+		Body:          NewBodyString(s),
+		ContentLength: int64(len(s)),
 		Close:         false,
 	}
 }

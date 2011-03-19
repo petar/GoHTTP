@@ -1,4 +1,3 @@
-
 package subs
 
 import (
@@ -8,13 +7,13 @@ import (
 	"github.com/petar/GoHTTP/server"
 )
 
-type Service struct {}
+type Service struct{}
 
 type In struct {
-	I0 int		"intv"
-	F0 float32	"floatv"
-	S0 string	"stringv"
-	B0 bool		"boolv"
+	I0 int     "intv"
+	F0 float32 "floatv"
+	S0 string  "stringv"
+	B0 bool    "boolv"
 }
 
 type Out struct {
@@ -36,7 +35,7 @@ func TestAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Service register: %s", err)
 	}
-	srv.AddSub("/api", api)	
+	srv.AddSub("/api/", api)
 	for {
 		q, err := srv.Read()
 		if err != nil {
