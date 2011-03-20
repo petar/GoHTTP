@@ -17,34 +17,34 @@ import (
 	"github.com/petar/GoHTTP/server"
 )
 
-// APISub is a Sub that acts as an HTTP RPC server.
+// API is a Sub that acts as an HTTP RPC server.
 // Requests are received in the form of HTTP GET requests with
 // parameters in the URL, just like the ones produced by jQuery's
 // AJAX calls. Responses are returned in the form of HTTP responses
 // with return values in the form of a JSON object in the response
 // body.
-type APISub struct {
+type API struct {
 	rpcs       *rpc.Server // does not need locking, since re-entrant
 	sync.Mutex             // protects auto
 	auto       uint64
 }
 
-func NewAPISub() *APISub {
-	return &APISub{
+func NewAPI() *API {
+	return &API{
 		rpcs: rpc.NewServer(),
 		auto: 1, // Start seq numbers from 1, so that 0 is always an invalid seq number
 	}
 }
 
-func (api *APISub) Register(rcvr interface{}) os.Error {
+func (api *API) Register(rcvr interface{}) os.Error {
 	return api.rpcs.Register(rcvr)
 }
 
-func (api *APISub) RegisterName(name string, rcvr interface{}) os.Error {
+func (api *API) RegisterName(name string, rcvr interface{}) os.Error {
 	return api.rpcs.RegisterName(name, rcvr)
 }
 
-func (api *APISub) Serve(q *server.Query) {
+func (api *API) Serve(q *server.Query) {
 	qx := &queryCodec{Query: q}
 	api.Lock()
 	qx.seq = api.auto
@@ -54,7 +54,7 @@ func (api *APISub) Serve(q *server.Query) {
 	go api.rpcs.ServeCodec(qx)
 }
 
-// httpCodec is an rpc.ServerCodec for the APISub server
+// httpCodec is an rpc.ServerCodec for the API server
 type queryCodec struct {
 	*server.Query
 

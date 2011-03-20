@@ -30,7 +30,7 @@ func TestAPI(t *testing.T) {
 	if err != nil {
 		t.Fatalf("starting server: %s", err)
 	}
-	api := NewAPISub()
+	api := NewAPI()
 	err = api.Register(&Service{})
 	if err != nil {
 		t.Fatalf("Service register: %s", err)
