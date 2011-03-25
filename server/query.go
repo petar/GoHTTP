@@ -6,7 +6,7 @@ package server
 
 import (
 	"os"
-	//"strings"
+	"strings"
 	"github.com/petar/GoHTTP/http"
 )
 
@@ -71,11 +71,11 @@ func (q *Query) Hijack() *http.ServerConn {
 func (q *Query) Write(resp *http.Response) (err os.Error) {
 	req := q.Req
 	q.Req = nil
-	//ext := q.Ext
-	//q.Ext = nil
+	ext := q.Ext
+	q.Ext = nil
 
 	// Invoke extensions in reverse order
-	/*
+
 	p := q.origPath
 	extch := q.srv.extRevIter()
 	for ec, ok := <-extch; ok; ec, ok = <-extch {
@@ -87,7 +87,7 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 				return
 			}
 		}
-	}*/
+	}
 
 	err = q.ssc.Write(req, resp)
 	if err != nil {
