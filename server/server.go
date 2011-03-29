@@ -27,7 +27,7 @@ type Server struct {
 
 	// Real-time state
 	listen net.Listener
-	conns  map[*stampedServerConn]int
+	conns  map[*StampedServerConn]int
 	qch    chan *Query
 	fdl    util.FDLimiter
 	subs   []*subcfg
@@ -49,7 +49,7 @@ func NewServer(l net.Listener, config Config, fdlim int) *Server {
 	srv := &Server{
 		config: config,
 		listen: l,
-		conns:  make(map[*stampedServerConn]int),
+		conns:  make(map[*StampedServerConn]int),
 		qch:    make(chan *Query),
 	}
 	srv.fdl.Init(fdlim)
@@ -87,7 +87,7 @@ func (srv *Server) expireLoop() {
 		srv.Unlock()
 		elm := kills.Front()
 		for elm != nil {
-			ssc := elm.Value.(*stampedServerConn)
+			ssc := elm.Value.(*StampedServerConn)
 			srv.bury(ssc)
 			elm = elm.Next()
 		}
@@ -128,7 +128,7 @@ func (srv *Server) acceptLoop() {
 			return
 		}
 		c = util.NewRunOnCloseConn(c, func() { srv.fdl.Unlock() })
-		ssc := newStampedServerConn(c, nil)
+		ssc := NewStampedServerConn(c, nil)
 		ok := srv.register(ssc)
 		if !ok {
 			ssc.Close()
@@ -263,7 +263,7 @@ func (srv *Server) process(q *Query) *Query {
 	return q
 }
 
-func (srv *Server) read(ssc *stampedServerConn) {
+func (srv *Server) read(ssc *StampedServerConn) {
 	for {
 		req, err := ssc.Read()
 		perr, ok := err.(*os.PathError)
@@ -291,7 +291,7 @@ func (srv *Server) read(ssc *stampedServerConn) {
 	}
 }
 
-func (srv *Server) register(ssc *stampedServerConn) bool {
+func (srv *Server) register(ssc *StampedServerConn) bool {
 	srv.Lock()
 	defer srv.Unlock()
 	if _, present := srv.conns[ssc]; present {
@@ -301,13 +301,13 @@ func (srv *Server) register(ssc *stampedServerConn) bool {
 	return true
 }
 
-func (srv *Server) unregister(ssc *stampedServerConn) {
+func (srv *Server) unregister(ssc *StampedServerConn) {
 	srv.Lock()
 	defer srv.Unlock()
 	srv.conns[ssc] = 0, false
 }
 
-func (srv *Server) bury(ssc *stampedServerConn) {
+func (srv *Server) bury(ssc *StampedServerConn) {
 	srv.unregister(ssc)
 	c, _ := ssc.Close()
 	if c != nil {

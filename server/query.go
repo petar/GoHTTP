@@ -20,7 +20,7 @@ type Query struct {
 
 	origPath string
 	srv      *Server
-	ssc      *stampedServerConn
+	ssc      *StampedServerConn
 	err      os.Error
 	fwd      bool // If true, the user has already called either Continue() or Hijack()
 	hijacked bool
