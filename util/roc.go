@@ -41,6 +41,7 @@ func NewRunOnCloseConn(c net.Conn, f func()) *runOnCloseConn {
 	return &runOnCloseConn{c, f}
 }
 
+// XXX: make re-entrant
 func (t *runOnCloseConn) Close() os.Error {
 	err := t.Conn.Close()
 	if t.run != nil {
