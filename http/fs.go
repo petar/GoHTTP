@@ -72,7 +72,7 @@ func serveFile(w ResponseWriter, r *Request, name string, redirect bool) {
 		return
 	}
 
-	f, err := os.Open(name, os.O_RDONLY, 0)
+	f, err := os.Open(name)
 	if err != nil {
 		// TODO expose actual error?
 		NotFound(w, r)
@@ -113,7 +113,7 @@ func serveFile(w ResponseWriter, r *Request, name string, redirect bool) {
 	// use contents of index.html for directory, if present
 	if d.IsDirectory() {
 		index := name + filepath.FromSlash(indexPage)
-		ff, err := os.Open(index, os.O_RDONLY, 0)
+		ff, err := os.Open(index)
 		if err == nil {
 			defer ff.Close()
 			dd, err := ff.Stat()
@@ -148,7 +148,7 @@ func serveFile(w ResponseWriter, r *Request, name string, redirect bool) {
 		} else {
 			w.Header().Set("Content-Type", "application/octet-stream") // generic binary
 		}
-		f.Seek(0, 0) // rewind to output whole file
+		f.Seek(0, os.SEEK_SET) // rewind to output whole file
 	}
 
 	// handle Content-Range header.
@@ -163,7 +163,7 @@ func serveFile(w ResponseWriter, r *Request, name string, redirect bool) {
 	}
 	if len(ranges) == 1 {
 		ra := ranges[0]
-		if _, err := f.Seek(ra.start, 0); err != nil {
+		if _, err := f.Seek(ra.start, os.SEEK_SET); err != nil {
 			Error(w, err.String(), StatusRequestedRangeNotSatisfiable)
 			return
 		}
