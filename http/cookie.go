@@ -144,10 +144,10 @@ func writeSetCookies(w io.Writer, kk []*Cookie) os.Error {
 		b.Reset()
 		fmt.Fprintf(&b, "%s=%s", c.Name, c.Value)
 		if len(c.Path) > 0 {
-			fmt.Fprintf(&b, "; Path=%s", URLEscape(c.Path))
+			fmt.Fprintf(&b, "; Path=%s", c.Path)
 		}
 		if len(c.Domain) > 0 {
-			fmt.Fprintf(&b, "; Domain=%s", URLEscape(c.Domain))
+			fmt.Fprintf(&b, "; Domain=%s", c.Domain)
 		}
 		if len(c.Expires.Zone) > 0 {
 			fmt.Fprintf(&b, "; Expires=%s", c.Expires.Format(time.RFC1123))
