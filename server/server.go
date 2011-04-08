@@ -129,11 +129,7 @@ func (srv *Server) acceptLoop() {
 		}
 		c = util.NewRunOnCloseConn(c, func() { srv.fdl.Unlock() })
 		ssc := NewStampedServerConn(c, nil)
-		ok := srv.register(ssc)
-		if !ok {
-			ssc.Close()
-			c.Close()
-		}
+		srv.register(ssc)
 		go srv.read(ssc)
 	}
 }
@@ -272,6 +268,7 @@ func (srv *Server) read(ssc *StampedServerConn) {
 			return
 		}
 		if err != nil {
+			log.Printf("Request read: %s\n", err)
 			// TODO(petar): Technically, a read side error should not terminate
 			// the ServerConn if there are outstanding requests to be answered,
 			// since the write side might still be healthy. But this is
@@ -291,14 +288,13 @@ func (srv *Server) read(ssc *StampedServerConn) {
 	}
 }
 
-func (srv *Server) register(ssc *StampedServerConn) bool {
+func (srv *Server) register(ssc *StampedServerConn) {
 	srv.Lock()
 	defer srv.Unlock()
 	if _, present := srv.conns[ssc]; present {
 		panic("register twice")
 	}
 	srv.conns[ssc] = 1
-	return true
 }
 
 func (srv *Server) unregister(ssc *StampedServerConn) {
@@ -309,10 +305,7 @@ func (srv *Server) unregister(ssc *StampedServerConn) {
 
 func (srv *Server) bury(ssc *StampedServerConn) {
 	srv.unregister(ssc)
-	c, _ := ssc.Close()
-	if c != nil {
-		c.Close()
-	}
+	ssc.DeepClose()
 }
 
 // Shutdown closes the Server by closing the underlying

@@ -59,6 +59,15 @@ func (sc *ServerConn) Close() (c net.Conn, r *bufio.Reader) {
 	return
 }
 
+// DeepClose calls Close and then also closes the underlying connection
+func (sc *ServerConn) DeepClose() os.Error {
+	c, _ := sc.Close()
+	if c != nil {
+		return c.Close()
+	}
+	return nil
+}
+
 // Read returns the next request on the wire. An ErrPersistEOF is returned if
 // it is gracefully determined that there are no more requests (e.g. after the
 // first request on an HTTP/1.0 connection, or after a Connection:close on a
@@ -251,6 +260,15 @@ func (cc *ClientConn) Close() (c net.Conn, r *bufio.Reader) {
 	cc.c = nil
 	cc.r = nil
 	return
+}
+
+// DeepClose calls Close and then also closes the underlying connection
+func (cc *ClientConn) DeepClose() os.Error {
+	c, _ := cc.Close()
+	if c != nil {
+		return c.Close()
+	}
+	return nil
 }
 
 // Write writes a request. An ErrPersistEOF error is returned if the connection
