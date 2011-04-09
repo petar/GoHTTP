@@ -13,7 +13,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/petar/GoHTTP/dbg"
 	"github.com/petar/GoHTTP/http"
 	"github.com/petar/GoHTTP/util"
 )
