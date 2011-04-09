@@ -122,6 +122,15 @@ func (srv *Server) acceptLoop() {
 		c.(*net.TCPConn).SetKeepAlive(true)
 		err = c.SetReadTimeout(srv.config.Timeout)
 		if err != nil {
+			log.Printf("Set read timeout: %s\n", err)
+			c.Close()
+			srv.fdl.Unlock()
+			srv.qch <- newQueryErr(err)
+			return
+		}
+		err = c.SetWriteTimeout(srv.config.Timeout)
+		if err != nil {
+			log.Printf("Set write timeout: %s\n", err)
 			c.Close()
 			srv.fdl.Unlock()
 			srv.qch <- newQueryErr(err)
@@ -264,11 +273,12 @@ func (srv *Server) read(ssc *StampedServerConn) {
 		req, err := ssc.Read()
 		perr, ok := err.(*os.PathError)
 		if ok && perr.Error == os.EAGAIN {
+			log.Printf("Request Read path error: Op=%s, Path=%s, Error=%s\n", perr.Op, perr.Path, perr.Error)
 			srv.bury(ssc)
 			return
 		}
 		if err != nil {
-			log.Printf("Request read: %s\n", err)
+			log.Printf("Request Read: %s\n", err)
 			// TODO(petar): Technically, a read side error should not terminate
 			// the ServerConn if there are outstanding requests to be answered,
 			// since the write side might still be healthy. But this is

@@ -5,6 +5,7 @@
 package server
 
 import (
+	"log"
 	"os"
 	"strings"
 	"github.com/petar/GoHTTP/http"
@@ -91,6 +92,7 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 
 	err = q.ssc.Write(req, resp)
 	if err != nil {
+		log.Printf("Response Write: %s\n", err)
 		q.srv.bury(q.ssc)
 		q.ssc = nil
 		q.srv = nil
