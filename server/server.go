@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/petar/GoHTTP/dbg"
 	"github.com/petar/GoHTTP/http"
 	"github.com/petar/GoHTTP/util"
 )
@@ -278,12 +279,15 @@ func (srv *Server) read(ssc *StampedServerConn) {
 			return
 		}
 		if err != nil {
-			log.Printf("Request Read: %s\n", err)
 			// TODO(petar): Technically, a read side error should not terminate
 			// the ServerConn if there are outstanding requests to be answered,
 			// since the write side might still be healthy. But this is
 			// virtually never the case with TCP, so we currently go for simplicity
 			// and just close the connection.
+
+			// NOTE(petar): 'tcp read ... resource temporarily unavailable' errors 
+			// received here, I think, correspond to when the remote side has closed
+			// the connection. This is OK.
 			srv.bury(ssc)
 			return
 		}
