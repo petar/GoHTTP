@@ -6,6 +6,7 @@ package subs
 
 import (
 	"json"
+	"log"
 	"os"
 	"path"
 	"reflect"
@@ -95,6 +96,7 @@ func (qx *queryCodec) ReadRequestBody(body interface{}) os.Error {
 	if err != nil {
 		return err
 	}
+	log.Printf("API request URL: %d\n", qx.Query.Req.URL.RawQuery)
 	return decodeMap(bmap, body)
 }
 
@@ -125,57 +127,55 @@ var ErrCodec = os.NewError("api codec")
 // TODO: Maybe add logic to parse array/slice values
 func decodeMap(m map[string][]string, v interface{}) os.Error {
 
-	rv := reflect.NewValue(v)
+	vv := reflect.NewValue(v)
 
 	// If the user wants result in the form of a map, just copy the contents
-	mv, ok := rv.(*reflect.MapValue)
-	if ok {
-		mv.Set(reflect.NewValue(m).(*reflect.MapValue))
+	if vv.Type().Kind() == reflect.Map {
+		vv.Set(reflect.NewValue(m))
 		return nil
 	}
 
 	// Otherwise, we expect a pointer to a non-recursive struct
-	pv, ok := rv.(*reflect.PtrValue)
-	if !ok || pv.IsNil() {
+	if vv.Type().Kind() != reflect.Ptr || vv.IsNil() {
 		return ErrCodec
 	}
-	sv, ok := pv.Elem().(*reflect.StructValue)
-	if !ok {
+	if vv.Elem().Type().Kind() != reflect.Struct {
 		return ErrCodec
 	}
+	sv := vv.Elem()
 
 	for k, ss := range m {
 		if len(ss) == 0 {
 			continue
 		}
 		fv := sv.FieldByName(k)
-		if fv == nil {
+		if fv.IsNil() {
 			continue
 		}
-		switch fv := fv.(type) {
-		case *reflect.BoolValue:
+		switch fv.Type().Kind() {
+		case reflect.Bool:
 			i, err := strconv.Atoi(ss[0])
 			if err != nil || i < 0 {
 				return ErrCodec
 			}
-			fv.Set(i > 0)
+			fv.SetBool(i > 0)
 
-		case *reflect.FloatValue:
+		case reflect.Float32, reflect.Float64:
 			f, err := strconv.Atof64(ss[0])
 			if err != nil {
 				return ErrCodec
 			}
-			fv.Set(f)
+			fv.SetFloat(f)
 
-		case *reflect.IntValue:
+		case reflect.Int:
 			i, err := strconv.Atoi64(ss[0])
 			if err != nil {
 				return ErrCodec
 			}
-			fv.Set(i)
+			fv.SetInt(i)
 
-		case *reflect.StringValue:
-			fv.Set(ss[0])
+		case reflect.String:
+			fv.SetString(ss[0])
 
 		default:
 			continue
