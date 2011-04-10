@@ -6,7 +6,6 @@ package subs
 
 import (
 	"json"
-	"log"
 	"os"
 	"path"
 	"reflect"
@@ -96,7 +95,6 @@ func (qx *queryCodec) ReadRequestBody(body interface{}) os.Error {
 	if err != nil {
 		return err
 	}
-	log.Printf("API request URL: %d\n", qx.Query.Req.URL.RawQuery)
 	return decodeMap(bmap, body)
 }
 
@@ -149,7 +147,7 @@ func decodeMap(m map[string][]string, v interface{}) os.Error {
 			continue
 		}
 		fv := sv.FieldByName(k)
-		if fv.IsNil() {
+		if !fv.IsValid() {
 			continue
 		}
 		switch fv.Type().Kind() {
