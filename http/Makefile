@@ -23,5 +23,6 @@ GOFILES=\
 	petar-boiler.go\
 	cookie.go\
 	header.go\
+	reverseproxy.go\
 
 include $(GOROOT)/src/Make.pkg
