@@ -125,11 +125,11 @@ var ErrCodec = os.NewError("api codec")
 // TODO: Maybe add logic to parse array/slice values
 func decodeMap(m map[string][]string, v interface{}) os.Error {
 
-	vv := reflect.NewValue(v)
+	vv := reflect.ValueOf(v)
 
 	// If the user wants result in the form of a map, just copy the contents
 	if vv.Type().Kind() == reflect.Map {
-		vv.Set(reflect.NewValue(m))
+		vv.Set(reflect.ValueOf(m))
 		return nil
 	}
 
