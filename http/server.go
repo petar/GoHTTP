@@ -309,7 +309,7 @@ func (w *response) WriteHeader(code int) {
 		text = "status code " + codestring
 	}
 	io.WriteString(w.conn.buf, proto+" "+codestring+" "+text+"\r\n")
-	writeSortedHeader(w.conn.buf, w.header, nil)
+	w.header.Write(w.conn.buf)
 	io.WriteString(w.conn.buf, "\r\n")
 }
 
@@ -423,6 +423,9 @@ func (w *response) finishRequest() {
 	}
 	w.conn.buf.Flush()
 	w.req.Body.Close()
+	if w.req.MultipartForm != nil {
+		w.req.MultipartForm.RemoveAll()
+	}
 
 	if w.contentLength != -1 && w.contentLength != w.written {
 		// Did not write enough. Avoid getting out of sync.
