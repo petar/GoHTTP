@@ -9,10 +9,8 @@ import (
 	"template"
 )
 
-// CachedTemplate represents a template.Template object that comes
-// from a file.
-// NOTE: CachedTemplate is not re-entrant because template.Template
-// is not anyway.
+// CachedTemplate represents a template.Template object that comes from a file.
+// NOTE: CachedTemplate is not re-entrant because template.Template is not anyway.
 type CachedTemplate struct {
 	fname  string
 	fmap   template.FormatterMap
