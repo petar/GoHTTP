@@ -10,6 +10,8 @@ import (
 )
 
 // CachedTemplate represents a template.Template object that comes from a file.
+// A get-method returns the template.Template object, while transparently ensuring
+// that the returned object corresponds to the newest version of the file.
 // NOTE: CachedTemplate is not re-entrant because template.Template is not anyway.
 type CachedTemplate struct {
 	fname  string
@@ -36,6 +38,7 @@ func (c *CachedTemplate) Get() (templ *template.Template, err os.Error) {
 	return c.templ, nil
 }
 
+// readFile creates a new template object directly from the corresponding file.
 func (c *CachedTemplate) readFile() (templ *template.Template, err os.Error) {
 	fi, err := os.Stat(c.fname)
 	if err != nil {
