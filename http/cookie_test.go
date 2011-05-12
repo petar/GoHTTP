@@ -21,9 +21,13 @@ var writeSetCookiesTests = []struct {
 		[]*Cookie{
 			&Cookie{Name: "cookie-1", Value: "v$1"},
 			&Cookie{Name: "cookie-2", Value: "two", MaxAge: 3600},
+			&Cookie{Name: "cookie-3", Value: "three", Domain: ".example.com"},
+			&Cookie{Name: "cookie-4", Value: "four", Path: "/restricted/"},
 		},
 		"Set-Cookie: cookie-1=v$1\r\n" +
-			"Set-Cookie: cookie-2=two; Max-Age=3600\r\n",
+			"Set-Cookie: cookie-2=two; Max-Age=3600\r\n" +
+			"Set-Cookie: cookie-3=three; Domain=.example.com\r\n" +
+			"Set-Cookie: cookie-4=four; Path=/restricted/\r\n",
 	},
 }
 
@@ -44,8 +48,20 @@ var writeCookiesTests = []struct {
 	Raw     string
 }{
 	{
+		[]*Cookie{},
+		"",
+	},
+	{
 		[]*Cookie{&Cookie{Name: "cookie-1", Value: "v$1"}},
 		"Cookie: cookie-1=v$1\r\n",
+	},
+	{
+		[]*Cookie{
+			&Cookie{Name: "cookie-1", Value: "v$1"},
+			&Cookie{Name: "cookie-2", Value: "v$2"},
+			&Cookie{Name: "cookie-3", Value: "v$3"},
+		},
+		"Cookie: cookie-1=v$1; cookie-2=v$2; cookie-3=v$3\r\n",
 	},
 }
 
