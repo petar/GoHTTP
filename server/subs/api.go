@@ -100,14 +100,14 @@ func (qx *queryCodec) ReadRequestBody(body interface{}) os.Error {
 
 func (qx *queryCodec) WriteResponse(resp *rpc.Response, body interface{}) os.Error {
 	if resp.Error != "" {
-		return qx.Query.Write(http.NewResponse400String(resp.Error))
+		return qx.Query.Write(http.NewResponse400String(qx.Query.Req, resp.Error))
 	}
 	buf, err := json.Marshal(body)
 	if err != nil {
-		qx.Query.Write(http.NewResponse500())
+		qx.Query.Write(http.NewResponse500(qx.Query.Req))
 		return ErrCodec
 	}
-	return qx.Query.Write(http.NewResponse200Bytes(buf))
+	return qx.Query.Write(http.NewResponse200Bytes(qx.Query.Req, buf))
 }
 
 func (qx *queryCodec) Close() os.Error { return nil }

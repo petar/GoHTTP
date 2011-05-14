@@ -22,7 +22,7 @@ func NewStaticSub(staticPath string) *StaticSub {
 func (ss *StaticSub) Serve(q *server.Query) {
 	req := q.Req
 	if req.Method != "GET" {
-		q.ContinueAndWrite(http.NewResponse404())
+		q.ContinueAndWrite(http.NewResponse404(req))
 		return
 	}
 	p := req.URL.Path
@@ -32,6 +32,6 @@ func (ss *StaticSub) Serve(q *server.Query) {
 		p = p[1:]
 	}
 	full := path.Join(ss.staticPath, p)
-	resp, _ := http.NewResponseFile(full)
+	resp, _ := http.NewResponseFile(req, full)
 	q.ContinueAndWrite(resp)
 }

@@ -35,28 +35,28 @@ func NewBodyFile(filename string) (io.ReadCloser, os.Error) {
 	return NopCloser{bytes.NewBuffer(f)}, nil
 }
 
-func NewResponseFile(filename string) (*Response, os.Error) {
+func NewResponseFile(req *Request, filename string) (*Response, os.Error) {
 	b, err := NewBodyFile(filename)
 	if err != nil {
-		return NewResponse404(), err
+		return NewResponse404(req), err
 	}
-	r := NewResponse200()
+	r := NewResponse200(req)
 	r.Body = b
 	r.TransferEncoding = []string{"chunked"}
 	r.ContentLength = -1
 	return r, nil
 }
 
-func NewResponseWithBody(r io.ReadCloser) *Response {
-	resp := NewResponse200()
+func NewResponseWithBody(req *Request, r io.ReadCloser) *Response {
+	resp := NewResponse200(req)
 	resp.Body = NopCloser{r}
 	resp.TransferEncoding = []string{"chunked"}
 	resp.ContentLength = -1
 	return resp
 }
 
-func NewResponseWithReader(r io.Reader) *Response {
-	return NewResponseWithBody(NopCloser{r})
+func NewResponseWithReader(req *Request, r io.Reader) *Response {
+	return NewResponseWithBody(req, NopCloser{r})
 }
 
 // DupResp returns a replica of resp and any error encountered

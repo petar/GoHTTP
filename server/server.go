@@ -174,7 +174,7 @@ func (srv *Server) Launch() os.Error {
 		if err != nil {
 			return err
 		}
-		q.ContinueAndWrite(http.NewResponse404())
+		q.ContinueAndWrite(http.NewResponse404(q.Req))
 	}
 	panic("unreach")
 }
