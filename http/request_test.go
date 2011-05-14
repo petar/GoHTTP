@@ -162,13 +162,22 @@ func TestRedirect(t *testing.T) {
 	defer ts.Close()
 
 	var end = regexp.MustCompile("/foo/$")
-	r, url, err := Get(ts.URL)
+	r, err := Get(ts.URL)
 	if err != nil {
 		t.Fatal(err)
 	}
 	r.Body.Close()
+	url := r.Request.URL.String()
 	if r.StatusCode != 200 || !end.MatchString(url) {
 		t.Fatalf("Get got status %d at %q, want 200 matching /foo/$", r.StatusCode, url)
+	}
+}
+
+func TestSetBasicAuth(t *testing.T) {
+	r, _ := NewRequest("GET", "http://example.com/", nil)
+	r.SetBasicAuth("Aladdin", "open sesame")
+	if g, e := r.Header.Get("Authorization"), "Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ=="; g != e {
+		t.Errorf("got header %q, want %q", g, e)
 	}
 }
 

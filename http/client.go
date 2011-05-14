@@ -126,13 +126,10 @@ func shouldRedirect(statusCode int) bool {
 //    303 (See Other)
 //    307 (Temporary Redirect)
 //
-// finalURL is the URL from which the response was fetched -- identical to the
-// input URL unless redirects were followed.
-//
 // Caller should close r.Body when done reading from it.
 //
 // Get is a convenience wrapper around DefaultClient.Get.
-func Get(url string) (r *Response, finalURL string, err os.Error) {
+func Get(url string) (r *Response, err os.Error) {
 	return DefaultClient.Get(url)
 }
 
@@ -145,11 +142,12 @@ func Get(url string) (r *Response, finalURL string, err os.Error) {
 //    303 (See Other)
 //    307 (Temporary Redirect)
 //
-// finalURL is the URL from which the response was fetched -- identical
-// to the input URL unless redirects were followed.
-//
 // Caller should close r.Body when done reading from it.
-func (c *Client) Get(url string) (r *Response, finalURL string, err os.Error) {
+func (c *Client) Get(url string) (r *Response, err os.Error) {
+	return c.sendFollowingRedirects("GET", url)
+}
+
+func (c *Client) sendFollowingRedirects(method, url string) (r *Response, err os.Error) {
 	// TODO: if/when we add cookie support, the redirected request shouldn't
 	// necessarily supply the same cookies as the original.
 	var base *URL
@@ -161,7 +159,7 @@ func (c *Client) Get(url string) (r *Response, finalURL string, err os.Error) {
 
 	for redirect := 0; ; redirect++ {
 		var req Request
-		req.Method = "GET"
+		req.Method = method
 		req.Header = make(Header)
 		if base == nil {
 			req.URL, err = ParseURL(url)
@@ -198,11 +196,10 @@ func (c *Client) Get(url string) (r *Response, finalURL string, err os.Error) {
 			via = append(via, &req)
 			continue
 		}
-		finalURL = url
 		return
 	}
 
-	err = &URLError{"Get", url, err}
+	err = &URLError{method[0:1] + strings.ToLower(method[1:]), url, err}
 	return
 }
 
@@ -290,19 +287,28 @@ func urlencode(data map[string]string) (b *bytes.Buffer) {
 	return bytes.NewBuffer([]byte(EncodeQuery(m)))
 }
 
-// Head issues a HEAD to the specified URL.
+// Head issues a HEAD to the specified URL.  If the response is one of the
+// following redirect codes, Head follows the redirect after calling the
+// Client's CheckRedirect function.
+//
+//    301 (Moved Permanently)
+//    302 (Found)
+//    303 (See Other)
+//    307 (Temporary Redirect)
 //
 // Head is a wrapper around DefaultClient.Head
 func Head(url string) (r *Response, err os.Error) {
 	return DefaultClient.Head(url)
 }
 
-// Head issues a HEAD to the specified URL.
+// Head issues a HEAD to the specified URL.  If the response is one of the
+// following redirect codes, Head follows the redirect after calling the
+// Client's CheckRedirect function.
+//
+//    301 (Moved Permanently)
+//    302 (Found)
+//    303 (See Other)
+//    307 (Temporary Redirect)
 func (c *Client) Head(url string) (r *Response, err os.Error) {
-	var req Request
-	req.Method = "HEAD"
-	if req.URL, err = ParseURL(url); err != nil {
-		return
-	}
-	return send(&req, c.Transport)
+	return c.sendFollowingRedirects("HEAD", url)
 }
