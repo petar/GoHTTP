@@ -5,6 +5,7 @@
 package server
 
 import (
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -70,6 +71,12 @@ func (q *Query) Hijack() *http.ServerConn {
 // Any non-nil error returned pertains to the ServerConn and not
 // to the Server as a whole.
 func (q *Query) Write(resp *http.Response) (err os.Error) {
+	if resp.Body != nil {
+		defer func(b io.ReadCloser) { 
+			b.Close() 
+		}(resp.Body)
+	}
+
 	req := q.Req
 	q.Req = nil
 	ext := q.Ext
