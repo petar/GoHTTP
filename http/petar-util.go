@@ -9,30 +9,21 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"github.com/petar/GoGauge/unclosed"
 )
 
-// NopCloser adds a no-op Close method to a Reader object to
-// convert into an io.ReadCloser. This is handy when you need to
-// use e.g. a bytes.Buffer buf as a Body. In this case you
-// would Request.Body = NopCloser{buf}
-type NopCloser struct {
-	io.Reader
-}
-
-func (NopCloser) Close() os.Error { return nil }
-
 // NewBodyString converts a string to an io.ReadCloser.
-func NewBodyString(s string) io.ReadCloser { return NopCloser{bytes.NewBufferString(s)} }
+func NewBodyString(s string) io.ReadCloser { return ioutil.NopCloser(bytes.NewBufferString(s)) }
 
 // NewBodyBytes converts a byte slice to an io.ReadCloser.
-func NewBodyBytes(b []byte) io.ReadCloser { return NopCloser{bytes.NewBuffer(b)} }
+func NewBodyBytes(b []byte) io.ReadCloser { return ioutil.NopCloser(bytes.NewBuffer(b)) }
 
 func NewBodyFile(filename string) (io.ReadCloser, os.Error) {
 	f, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	return NopCloser{bytes.NewBuffer(f)}, nil
+	return unclosed.NewReadCloserTracker(ioutil.NopCloser(bytes.NewBuffer(f))), nil
 }
 
 func NewResponseFile(req *Request, filename string) (*Response, os.Error) {
@@ -49,14 +40,14 @@ func NewResponseFile(req *Request, filename string) (*Response, os.Error) {
 
 func NewResponseWithBody(req *Request, r io.ReadCloser) *Response {
 	resp := NewResponse200(req)
-	resp.Body = NopCloser{r}
+	resp.Body = ioutil.NopCloser(r)
 	resp.TransferEncoding = []string{"chunked"}
 	resp.ContentLength = -1
 	return resp
 }
 
 func NewResponseWithReader(req *Request, r io.Reader) *Response {
-	return NewResponseWithBody(req, NopCloser{r})
+	return NewResponseWithBody(req, ioutil.NopCloser(r))
 }
 
 // DupResp returns a replica of resp and any error encountered
