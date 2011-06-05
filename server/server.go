@@ -149,6 +149,8 @@ func (srv *Server) acceptLoop() {
 // and the user us expected to call Shutdown(), perhaps after serving
 // outstanding queries.
 func (srv *Server) Read() (query *Query, err os.Error) {
+	// TODO: This loop processes requests in sequence. And does not process a new one
+	// until the old one has processed in process(). Need to parallelize this.
 	for {
 		q, ok := <-srv.qch
 		srv.Lock()

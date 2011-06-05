@@ -22,6 +22,7 @@ all: install
 DIRS=\
      	util\
 	http\
+	cache\
 	server\
 	server/subs\
 	template\

@@ -11,6 +11,7 @@ import (
 )
 
 // StaticSub is a Sub that serves static files from a given directory.
+// TODO: Intelligent caching
 type StaticSub struct {
 	staticPath string
 }
