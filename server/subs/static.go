@@ -7,17 +7,21 @@ package subs
 import (
 	"path"
 	"github.com/petar/GoHTTP/http"
+	"github.com/petar/GoHTTP/cache"
 	"github.com/petar/GoHTTP/server"
 )
 
 // StaticSub is a Sub that serves static files from a given directory.
-// TODO: Intelligent caching
 type StaticSub struct {
 	staticPath string
+	cache      *cache.Cache
 }
 
 func NewStaticSub(staticPath string) *StaticSub {
-	return &StaticSub{staticPath}
+	return &StaticSub{
+		staticPath: staticPath,
+		cache: cache.NewCache(),
+	}
 }
 
 func (ss *StaticSub) Serve(q *server.Query) {
@@ -32,7 +36,12 @@ func (ss *StaticSub) Serve(q *server.Query) {
 	} else if p[0] == '/' {
 		p = p[1:]
 	}
-	full := path.Join(ss.staticPath, p)
-	resp, _ := http.NewResponseFile(req, full)
+	full := path.Clean(path.Join(ss.staticPath, p))
+	buf, err := ss.cache.Get(full)
+	if err != nil {
+		q.ContinueAndWrite(http.NewResponse404(req))
+		return
+	}
+	resp := http.NewResponseWithBytes(req, buf)
 	q.ContinueAndWrite(resp)
 }

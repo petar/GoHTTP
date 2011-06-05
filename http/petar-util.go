@@ -46,6 +46,10 @@ func NewResponseWithBody(req *Request, r io.ReadCloser) *Response {
 	return resp
 }
 
+func NewResponseWithBytes(req *Request, b []byte) *Response {
+	return NewResponseWithBody(req, NewBodyBytes(b))
+}
+
 func NewResponseWithReader(req *Request, r io.Reader) *Response {
 	return NewResponseWithBody(req, ioutil.NopCloser(r))
 }

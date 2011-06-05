@@ -5,7 +5,6 @@
 package cache
 
 import (
-	"io/ioutil"
 	"os"
 	"sync"
 )
@@ -23,10 +22,10 @@ func NewCache() *Cache {
 
 func (c *Cache) Get(filename string) ([]byte, os.Error) {
 	c.Lock()
-	f, ok := files[filename]
+	f, ok := c.files[filename]
 	if !ok {
 		f = NewCachedFile(filename)
-		files[filename] = f
+		c.files[filename] = f
 	}
 	c.Unlock()
 	return f.Get()
