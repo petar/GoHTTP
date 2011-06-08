@@ -17,6 +17,7 @@ sites that I run, like e.g.
 ## Features
 
 * Core web server infrastructure with out-of-the-box keepalive and pipelining
+	* Support for limiting the number of file descriptors in use
 * A "query" abstraction to handling incoming requests which is more convenient than that of Go's the HTTP package
 * A system of "sub-servers" that allows modular handling of different URL sub-paths
 * A system of "extensions" which allows modular pre- and post-processing of HTTP header objects like cookies
