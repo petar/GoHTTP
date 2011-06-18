@@ -170,6 +170,7 @@ func (srv *Server) Read() (query *Query, err os.Error) {
 	panic("unreach")
 }
 
+// TODO: Add feature to serve requests in parallel
 func (srv *Server) Launch() os.Error {
 	for {
 		q, err := srv.Read()
