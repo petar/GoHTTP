@@ -24,7 +24,8 @@ DIRS=\
 	http\
 	cache\
 	server\
-	server/subs\
+	server/static\
+	server/rpc\
 	template\
 
 TEST=\

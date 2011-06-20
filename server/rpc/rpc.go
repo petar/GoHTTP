@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package subs
+package rpc
 
 import (
 	"json"
@@ -51,6 +51,7 @@ func (api *API) Serve(q *server.Query) {
 	api.auto++
 	api.Unlock()
 	q.Continue()
+	// XXX: Should this be a go-fork? It may mess with the parallelism in Server.Launch() e.g.
 	go api.rpcs.ServeCodec(qx)
 }
 

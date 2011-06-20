@@ -4,9 +4,8 @@
 
 include $(GOROOT)/src/Make.inc
 
-TARG=github.com/petar/GoHTTP/server/subs
+TARG=github.com/petar/GoHTTP/server/rpc
 GOFILES=\
-	static.go\
-	api.go\
+	rpc.go\
 
 include $(GOROOT)/src/Make.pkg
