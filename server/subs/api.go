@@ -54,6 +54,30 @@ func (api *API) Serve(q *server.Query) {
 	go api.rpcs.ServeCodec(qx)
 }
 
+// OpenArgs is a general arguments structure that the user can require as the first argument to an
+// RPC service methods. Alternatively, the user can require custom structures that substitute the
+// Args field below with specific structure types
+type OpenArgs struct {
+	Cookies []*http.Cookie
+	Args    map[string][]string
+}
+
+// CookieArgs is similar to OpenArgs, but it neglects the URL arguments
+type CookieArgs struct {
+	Cookies []*http.Cookie
+}
+
+// EmptyArgs neglects both URL and Cookie arguments
+type EmptyArgs struct {}
+
+//  Possible types of the argument structure's fields Args and Cookies:
+//
+//   Cookies []*Cookie
+//   Args    struct_type
+//           ptr_to_struct_type
+//           map[string][]string
+//           map[string]string
+
 // httpCodec is an rpc.ServerCodec for the API server
 type queryCodec struct {
 	*server.Query
@@ -68,7 +92,7 @@ type queryCodec struct {
 // synchronous sequence. If ReadRequestHeader returns an error,
 // then ReadRequestBody is either not called (if err == os.EOF or 
 // err == io.ErrUnexpectedEOF), or called with a nil argument 
-// (for any other err). WriteResponse is called out of sync., and
+// (for any other err). WriteResponse is called out of sync, and
 // only if ReadRequestBody returns no error.
 
 func (qx *queryCodec) ReadRequestHeader(req *rpc.Request) os.Error {
@@ -84,63 +108,97 @@ func (qx *queryCodec) ReadRequestHeader(req *rpc.Request) os.Error {
 }
 
 // ReadRequestBody parses the URL for the AJAX parameters
-func (qx *queryCodec) ReadRequestBody(body interface{}) os.Error {
+func (qx *queryCodec) ReadRequestBody(args interface{}) os.Error {
 	defer func() {
 		qx.seq = 0
 	}()
-	if body == nil {
-		return nil
-	}
-	bmap, err := http.ParseQuery(qx.Query.Req.URL.RawQuery)
-	if err != nil {
-		return err
-	}
-	return decodeMap(bmap, body)
-}
-
-func (qx *queryCodec) WriteResponse(resp *rpc.Response, body interface{}) os.Error {
-	if resp.Error != "" {
-		return qx.Query.Write(http.NewResponse400String(qx.Query.Req, resp.Error))
-	}
-	buf, err := json.Marshal(body)
-	if err != nil {
-		qx.Query.Write(http.NewResponse500(qx.Query.Req))
-		return ErrCodec
-	}
-	return qx.Query.Write(http.NewResponse200Bytes(qx.Query.Req, buf))
-}
-
-func (qx *queryCodec) Close() os.Error { return nil }
-
-func pathToServiceMethod(p string) string {
-	p = path.Clean(p)
-	if p != "" && p[0] == '/' {
-		p = p[1:]
-	}
-	return strings.Replace(p, "/", ".", -1)
-}
-
-var ErrCodec = os.NewError("api codec")
-
-// TODO: Maybe add logic to parse array/slice values
-func decodeMap(m map[string][]string, v interface{}) os.Error {
-
-	vv := reflect.ValueOf(v)
-
-	// If the user wants result in the form of a map, just copy the contents
-	if vv.Type().Kind() == reflect.Map {
-		vv.Set(reflect.ValueOf(m))
+	if args == nil {
 		return nil
 	}
 
-	// Otherwise, we expect a pointer to a non-recursive struct
-	if vv.Type().Kind() != reflect.Ptr || vv.IsNil() {
+	// Parse the arguments structure
+	av := reflect.ValueOf(args)
+
+	// If args is non-nil, it must be a pointer to struct that has any subset of the fields
+	// Cookies and Args
+	if av.Type().Kind() != reflect.Ptr {
 		return ErrCodec
 	}
-	if vv.Elem().Type().Kind() != reflect.Struct {
+	if av.Elem().Type().Kind() != reflect.Struct {
 		return ErrCodec
 	}
-	sv := vv.Elem()
+	sv := av.Elem()
+
+	// Parse URL arguments
+	// We expect that the field Args (if present) is one of:
+	// (*) struct, (*) pointer to struct, (*) map[string][]string, or (*) map[string]string
+	uv := sv.FieldByName("Args")
+	if uv.IsValid() {
+		mm, err := http.ParseQuery(qx.Query.Req.URL.RawQuery)
+		if err != nil {
+			return err
+		}
+		switch uv.Type().Kind() {
+
+		// struct
+		case reflect.Struct:
+			return decodeMapToNonRecursiveStruct(mm, uv)
+
+		// *struct
+		case reflect.Ptr:
+			ev := uv.Elem()
+			if ev.Type().Kind() != reflect.Struct {
+				return ErrCodec
+			}
+			return decodeMapToNonRecursiveStruct(mm, ev)
+
+		// map[string]string or map[string][]string
+		case reflect.Map:
+			mt := uv.Type()
+			if mt.Key().Kind() != reflect.String {
+				return ErrCodec
+			}
+			et := mt.Elem()
+			switch et.Kind() {
+			case reflect.String:
+				uv.Set(reflect.ValueOf(simplifyMap(mm)))
+			case reflect.Slice:
+				if et.Elem().Kind() != reflect.String {
+					return ErrCodec
+				}
+				uv.Set(reflect.ValueOf(mm))
+			default:
+				return ErrCodec
+			}
+		default:
+			return ErrCodec
+		}
+	}
+
+	// Parse Cookie arguments
+	cv := sv.FieldByName("Cookies")
+	if cv.IsValid() {
+		cv.Set(reflect.ValueOf(qx.Query.Req.Cookies()))
+	}
+
+	return nil
+}
+
+func simplifyMap(mm map[string][]string) map[string]string {
+	m := make(map[string]string)
+	for k, v := range mm {
+		if len(v) > 0 {
+			m[k] = v[0]
+		}
+	}
+	return m
+}
+
+func decodeMapToNonRecursiveStruct(m map[string][]string, sv reflect.Value) os.Error {
+
+	if sv.Type().Kind() != reflect.Struct {
+		return ErrCodec
+	}
 
 	for k, ss := range m {
 		if len(ss) == 0 {
@@ -182,3 +240,27 @@ func decodeMap(m map[string][]string, v interface{}) os.Error {
 
 	return nil
 }
+
+func (qx *queryCodec) WriteResponse(resp *rpc.Response, body interface{}) os.Error {
+	if resp.Error != "" {
+		return qx.Query.Write(http.NewResponse400String(qx.Query.Req, resp.Error))
+	}
+	buf, err := json.Marshal(body)
+	if err != nil {
+		qx.Query.Write(http.NewResponse500(qx.Query.Req))
+		return ErrCodec
+	}
+	return qx.Query.Write(http.NewResponse200Bytes(qx.Query.Req, buf))
+}
+
+func (qx *queryCodec) Close() os.Error { return nil }
+
+func pathToServiceMethod(p string) string {
+	p = path.Clean(p)
+	if p != "" && p[0] == '/' {
+		p = p[1:]
+	}
+	return strings.Replace(p, "/", ".", -1)
+}
+
+var ErrCodec = os.NewError("api codec")
