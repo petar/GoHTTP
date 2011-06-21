@@ -17,6 +17,9 @@ func NewResponse200(req *Request) *Response {
 }
 
 func NewResponse200Bytes(req *Request, b []byte) *Response {
+	if len(b) == 0 {
+		return NewResponse200(req)
+	}
 	return &Response{
 		Status:        "OK",
 		StatusCode:    200,

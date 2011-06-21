@@ -26,22 +26,24 @@ import (
 //           map[string][]string
 //           map[string]string
 
+// Convenience RPC arguments value structures
+
 type LongCookieArgs struct {
 	Cookies []*http.Cookie
-	Args    map[string][]string
+	Value   map[string][]string
 }
 
 type ShortCookieArgs struct {
 	Cookies []*http.Cookie
-	Args    map[string]string
+	Value   map[string]string
 }
 
 type LongArgs struct {
-	Args    map[string][]string
+	Value map[string][]string
 }
 
 type ShortArgs struct {
-	Args    map[string]string
+	Value map[string]string
 }
 
 type CookieArgs struct {
@@ -49,6 +51,32 @@ type CookieArgs struct {
 }
 
 type NoArgs struct {}
+
+// Convenience RPC return values structures
+
+type LongSetCookieRet struct {
+	SetCookies []*http.Cookie
+	Value      map[string][]string
+}
+
+type ShortSetCookieRet struct {
+	SetCookies []*http.Cookie
+	Value      map[string]string
+}
+
+type LongRet struct {
+	Value map[string][]string
+}
+
+type ShortRet struct {
+	Value map[string]string
+}
+
+type SetCookieRet struct {
+	SetCookies []*http.Cookie
+}
+
+type NoRet struct {}
 
 // httpCodec is an rpc.ServerCodec for the RPC server
 // It parses an incoming HTTP request into a an RPC arguments variable
@@ -83,6 +111,14 @@ func (qx *queryCodec) ReadRequestHeader(req *rpc.Request) os.Error {
 	return nil
 }
 
+func pathToServiceMethod(p string) string {
+	p = path.Clean(p)
+	if p != "" && p[0] == '/' {
+		p = p[1:]
+	}
+	return strings.Replace(p, "/", ".", -1)
+}
+
 // ReadRequestBody parses the URL for the AJAX parameters
 func (qx *queryCodec) ReadRequestBody(args interface{}) os.Error {
 	defer func() {
@@ -95,8 +131,8 @@ func (qx *queryCodec) ReadRequestBody(args interface{}) os.Error {
 	// Parse the arguments structure
 	av := reflect.ValueOf(args)
 
-	// If args is non-nil, it must be a pointer to struct that has any subset of the fields
-	// Cookies and Args
+	// If args is non-nil, it must be a pointer to a struct that has any subset of the fields
+	// Cookies and Value
 	if av.Type().Kind() != reflect.Ptr {
 		return ErrCodec
 	}
@@ -106,9 +142,9 @@ func (qx *queryCodec) ReadRequestBody(args interface{}) os.Error {
 	sv := av.Elem()
 
 	// Parse URL arguments
-	// We expect that the field Args (if present) is one of:
+	// We expect that the field Value (if present) is one of:
 	// (*) struct, (*) pointer to struct, (*) map[string][]string, or (*) map[string]string
-	uv := sv.FieldByName("Args")
+	uv := sv.FieldByName("Value")
 	if uv.IsValid() {
 		mm, err := http.ParseQuery(qx.Query.Req.URL.RawQuery)
 		if err != nil {
@@ -217,24 +253,89 @@ func decodeMapToNonRecursiveStruct(m map[string][]string, sv reflect.Value) os.E
 	return nil
 }
 
-func (qx *queryCodec) WriteResponse(resp *rpc.Response, body interface{}) os.Error {
+func (qx *queryCodec) WriteResponse(resp *rpc.Response, ret interface{}) (err os.Error) {
+
 	if resp.Error != "" {
 		return qx.Query.Write(http.NewResponse400String(qx.Query.Req, resp.Error))
 	}
-	buf, err := json.Marshal(body)
-	if err != nil {
+
+	if ret == nil {
+		return qx.Query.Write(http.NewResponse200(qx.Query.Req))
+	}
+
+	// Parse the return values structure
+	rv := reflect.ValueOf(ret)
+
+	// If ret is non-nil, it must be a pointer to a struct that has any subset of the fields
+	// SetCookies and Value
+	if rv.Type().Kind() != reflect.Ptr {
 		qx.Query.Write(http.NewResponse500(qx.Query.Req))
 		return ErrCodec
 	}
-	return qx.Query.Write(http.NewResponse200Bytes(qx.Query.Req, buf))
+	if rv.Elem().Type().Kind() != reflect.Struct {
+		qx.Query.Write(http.NewResponse500(qx.Query.Req))
+		return ErrCodec
+	}
+	sv := rv.Elem()
+
+	// Parse URL arguments
+	// We expect that the field Value (if present) is one of:
+	// (*) struct, (*) pointer to struct, (*) map[string]something
+	uv := sv.FieldByName("Value")
+
+	// body holds the json marshalled version of the RPC returned values
+	var body []byte
+
+	if uv.IsValid() {
+	
+		// To prevent certain Cross-site Request Forgery (CSRF) attacks,
+		// we impose that return values are not top-level values.
+		switch uv.Type().Kind() {
+
+		// struct
+		case reflect.Struct:
+
+		// *struct
+		case reflect.Ptr:
+			ev := uv.Elem()
+			if ev.Type().Kind() != reflect.Struct {
+				qx.Query.Write(http.NewResponse500(qx.Query.Req))
+				return ErrCodec
+			}
+
+		// map[string]something
+		case reflect.Map:
+			mt := uv.Type()
+			if mt.Key().Kind() != reflect.String {
+				qx.Query.Write(http.NewResponse500(qx.Query.Req))
+				return ErrCodec
+			}
+
+		default:
+			qx.Query.Write(http.NewResponse500(qx.Query.Req))
+			return ErrCodec
+		}
+
+		body, err = json.Marshal(uv.Interface())
+		if err != nil {
+			qx.Query.Write(http.NewResponse500(qx.Query.Req))
+			return err
+		}
+	}
+
+	// Parse SetCookie arguments
+	var setCookies []*http.Cookie
+	cv := sv.FieldByName("SetCookies")
+	if cv.IsValid() {
+		setCookies = cv.Interface().([]*http.Cookie)
+	}
+
+	httpResp := http.NewResponse200Bytes(qx.Query.Req, body)
+	httpResp.Header = make(http.Header)
+	for _, setCookie := range setCookies {
+		httpResp.Header.Add("Set-Cookie", setCookie.String())
+	}
+	return qx.Query.Write(httpResp)
 }
 
 func (qx *queryCodec) Close() os.Error { return nil }
-
-func pathToServiceMethod(p string) string {
-	p = path.Clean(p)
-	if p != "" && p[0] == '/' {
-		p = p[1:]
-	}
-	return strings.Replace(p, "/", ".", -1)
-}
