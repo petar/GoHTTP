@@ -26,58 +26,6 @@ import (
 //           map[string][]string
 //           map[string]string
 
-// Convenience RPC arguments value structures
-
-type LongCookieArgs struct {
-	Cookies []*http.Cookie
-	Value   map[string][]string
-}
-
-type ShortCookieArgs struct {
-	Cookies []*http.Cookie
-	Value   map[string]string
-}
-
-type LongArgs struct {
-	Value map[string][]string
-}
-
-type ShortArgs struct {
-	Value map[string]string
-}
-
-type CookieArgs struct {
-	Cookies []*http.Cookie
-}
-
-type NoArgs struct {}
-
-// Convenience RPC return values structures
-
-type LongSetCookieRet struct {
-	SetCookies []*http.Cookie
-	Value      map[string][]string
-}
-
-type ShortSetCookieRet struct {
-	SetCookies []*http.Cookie
-	Value      map[string]string
-}
-
-type LongRet struct {
-	Value map[string][]string
-}
-
-type ShortRet struct {
-	Value map[string]string
-}
-
-type SetCookieRet struct {
-	SetCookies []*http.Cookie
-}
-
-type NoRet struct {}
-
 // httpCodec is an rpc.ServerCodec for the RPC server
 // It parses an incoming HTTP request into a an RPC arguments variable
 // that has the structure described above.

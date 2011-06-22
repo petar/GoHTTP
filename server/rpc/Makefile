@@ -6,6 +6,7 @@ include $(GOROOT)/src/Make.inc
 
 TARG=github.com/petar/GoHTTP/server/rpc
 GOFILES=\
+	args.go\
 	codec.go\
 	rpc.go\
 
