@@ -6,88 +6,69 @@ package rpc
 
 import (
 	"os"
+	"github.com/petar/GoHTTP/http"
 )
-
-// Convenience RPC arguments value structures
-
-type LongCookieArgs struct {
-	Cookies []*http.Cookie
-	Value   map[string][]string
-}
-
-type ShortCookieArgs struct {
-	Cookies []*http.Cookie
-	Value   map[string]string
-}
-
-type LongArgs struct {
-	Value map[string][]string
-}
-
-type ShortArgs struct {
-	Value map[string]string
-}
-
-type CookieArgs struct {
-	Cookies []*http.Cookie
-}
-
-type NoArgs struct {}
-
-// Convenience RPC return values structures
-
-type LongSetCookieRet struct {
-	SetCookies []*http.Cookie
-	Value      map[string][]string
-}
-
-type ShortSetCookieRet struct {
-	SetCookies []*http.Cookie
-	Value      map[string]string
-}
-
-type LongRet struct {
-	Value map[string][]string
-}
-
-type ShortRet struct {
-	Value map[string]string
-}
-
-type SetCookieRet struct {
-	SetCookies []*http.Cookie
-}
-
-type NoRet struct {}
 
 var (
 	ErrArg = os.NewError("bad or missing RPC argument")
 )
 
-func GetBool(arg *ShortArgs, key string) (bool, os.Error) {
-	if arg.Value == nil {
+// Args is the argument structure for incoming RPC calls.
+type Args struct {
+	Cookies []*http.Cookie
+	Value   map[string][]string
+}
+
+func (a *Args) Bool(key string) (bool, os.Error) {
+	if a.Value == nil {
 		return false, ErrArg
 	}
-	v, ok := arg.Value[key]
-	if !ok {
+	v, ok := a.Value[key]
+	if !ok || len(v) == 0 {
 		return false, ErrArg
 	}
-	if v == "0" {
+	if v[0] == "0" {
 		return false, nil
 	}
-	if v == "1" {
+	if v[0] == "1" {
 		return true, nil
 	}
 	return false, ErrArg
 }
 
-func SetBool(r *ShortArgs, key string, value bool) {
-	if r.Value == nil {
-		r.Value = make(map[string]string)
+func (a *Args) String(key string) (string, os.Error) {
+	if a.Value == nil {
+		return "", ErrArg
 	}
+	v, ok := a.Value[key]
+	if !ok || len(v) == 0 {
+		return "", ErrArg
+	}
+	return v[0], nil
+}
+
+// Ret is the return valyes structure of RPC calls
+type Ret struct {
+	SetCookies []*http.Cookie
+	Value      map[string][]string
+}
+
+func (r *Ret) initIfZero() {
+	if r.Value == nil {
+		r.Value = make(map[string][]string)
+	}
+}
+
+func (r *Ret) Bool(key string, value bool) {
+	r.initIfZero()
 	s := "0"
 	if value {
 		s = "1"
 	}
-	r.Value[key] = s
+	r.Value[key] = []string{s}
+}
+
+func (r *Ret) String(key string, value string) {
+	r.initIfZero()
+	r.Value[key] = []string{value}
 }
