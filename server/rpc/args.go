@@ -59,7 +59,7 @@ func (r *Ret) initIfZero() {
 	}
 }
 
-func (r *Ret) Bool(key string, value bool) {
+func (r *Ret) SetBool(key string, value bool) {
 	r.initIfZero()
 	s := "0"
 	if value {
@@ -68,7 +68,12 @@ func (r *Ret) Bool(key string, value bool) {
 	r.Value[key] = []string{s}
 }
 
-func (r *Ret) String(key string, value string) {
+func (r *Ret) SetString(key string, value string) {
 	r.initIfZero()
 	r.Value[key] = []string{value}
+}
+
+func (r *Ret) AddSetCookie(setCookie *http.Cookie) {
+	r.initIfZero()
+	r.SetCookies = append(r.SetCookies, setCookie)
 }
