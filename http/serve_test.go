@@ -522,7 +522,12 @@ func TestHeadResponses(t *testing.T) {
 
 func TestTLSServer(t *testing.T) {
 	ts := httptest.NewTLSServer(HandlerFunc(func(w ResponseWriter, r *Request) {
-		fmt.Fprintf(w, "tls=%v", r.TLS != nil)
+		if r.TLS != nil {
+			w.Header().Set("X-TLS-Set", "true")
+			if r.TLS.HandshakeComplete {
+				w.Header().Set("X-TLS-HandshakeComplete", "true")
+			}
+		}
 	}))
 	defer ts.Close()
 	if !strings.HasPrefix(ts.URL, "https://") {
@@ -530,20 +535,17 @@ func TestTLSServer(t *testing.T) {
 	}
 	res, err := Get(ts.URL)
 	if err != nil {
-		t.Error(err)
+		t.Fatal(err)
 	}
 	if res == nil {
 		t.Fatalf("got nil Response")
 	}
-	if res.Body == nil {
-		t.Fatalf("got nil Response.Body")
+	defer res.Body.Close()
+	if res.Header.Get("X-TLS-Set") != "true" {
+		t.Errorf("expected X-TLS-Set response header")
 	}
-	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		t.Error(err)
-	}
-	if e, g := "tls=true", string(body); e != g {
-		t.Errorf("expected body %q; got %q", e, g)
+	if res.Header.Get("X-TLS-HandshakeComplete") != "true" {
+		t.Errorf("expected X-TLS-HandshakeComplete header")
 	}
 }
 
@@ -793,6 +795,30 @@ func TestNoDate(t *testing.T) {
 	_, present := res.Header["Date"]
 	if present {
 		t.Fatalf("Expected no Date header; got %v", res.Header["Date"])
+	}
+}
+
+func TestStripPrefix(t *testing.T) {
+	h := HandlerFunc(func(w ResponseWriter, r *Request) {
+		w.Header().Set("X-Path", r.URL.Path)
+	})
+	ts := httptest.NewServer(StripPrefix("/foo", h))
+	defer ts.Close()
+
+	res, err := Get(ts.URL + "/foo/bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g, e := res.Header.Get("X-Path"), "/bar"; g != e {
+		t.Errorf("test 1: got %s, want %s", g, e)
+	}
+
+	res, err = Get(ts.URL + "/bar")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if g, e := res.StatusCode, 404; g != e {
+		t.Errorf("test 2: got status %v, want %v", g, e)
 	}
 }
 
