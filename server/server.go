@@ -170,14 +170,19 @@ func (srv *Server) Read() (query *Query, err os.Error) {
 	panic("unreach")
 }
 
-// TODO: Add feature to serve requests in parallel
-func (srv *Server) Launch() os.Error {
-	for {
-		q, err := srv.Read()
-		if err != nil {
-			return err
-		}
-		q.ContinueAndWrite(http.NewResponse404(q.Req))
+// Launch initiates listening for incoming requests. 
+// Requests are passed on for handling to the appropriate subs, and
+// otherwise discarded with a 404 response.
+// Launch works on at most parallel requests in parallel.
+func (srv *Server) Launch(parallel int) os.Error {
+	for k := 0; k < parallel; k++ {
+		go func() {
+			q, err := srv.Read()
+			if err != nil {
+				return
+			}
+			q.ContinueAndWrite(http.NewResponse404(q.Req))
+		}()
 	}
 	panic("unreach")
 }

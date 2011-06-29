@@ -45,6 +45,5 @@ func (rpcsub *RPC) Serve(q *server.Query) {
 	rpcsub.auto++
 	rpcsub.Unlock()
 	q.Continue()
-	// XXX: Should this be a go-fork? It may mess with the parallelism in Server.Launch() e.g.
-	go rpcsub.rpcs.ServeCodec(qx)
+	rpcsub.rpcs.ServeCodec(qx)
 }
