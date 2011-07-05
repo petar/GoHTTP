@@ -174,17 +174,18 @@ func (srv *Server) Read() (query *Query, err os.Error) {
 // Requests are passed on for handling to the appropriate subs, and
 // otherwise discarded with a 404 response.
 // Launch works on at most parallel requests in parallel.
-func (srv *Server) Launch(parallel int) os.Error {
+func (srv *Server) Launch(parallel int) {
 	for k := 0; k < parallel; k++ {
 		go func() {
-			q, err := srv.Read()
-			if err != nil {
-				return
+			for {
+				q, err := srv.Read()
+				if err != nil {
+					return
+				}
+				q.ContinueAndWrite(http.NewResponse404(q.Req))
 			}
-			q.ContinueAndWrite(http.NewResponse404(q.Req))
 		}()
 	}
-	panic("unreach")
 }
 
 func (srv *Server) AddSub(url string, sub Sub) {

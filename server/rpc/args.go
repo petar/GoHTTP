@@ -15,15 +15,24 @@ var (
 
 // Args is the argument structure for incoming RPC calls.
 type Args struct {
+	// Method is the HTTP method used for this request
+	Method  string
+
+	// Cookies holds the cookies included in the request
 	Cookies []*http.Cookie
-	Value   map[string][]string
+
+	// Query holds the decoded arguments from the request's URL
+	Query   map[string][]string
+
+	// Body is the generic JSON-decoded version of the request body, or an empty map otherwise
+	Body    map[string]interface{}
 }
 
-func (a *Args) Bool(key string) (bool, os.Error) {
-	if a.Value == nil {
+func (a *Args) QueryBool(key string) (bool, os.Error) {
+	if a.Query == nil {
 		return false, ErrArg
 	}
-	v, ok := a.Value[key]
+	v, ok := a.Query[key]
 	if !ok || len(v) == 0 {
 		return false, ErrArg
 	}
@@ -36,11 +45,11 @@ func (a *Args) Bool(key string) (bool, os.Error) {
 	return false, ErrArg
 }
 
-func (a *Args) String(key string) (string, os.Error) {
-	if a.Value == nil {
+func (a *Args) QueryString(key string) (string, os.Error) {
+	if a.Query == nil {
 		return "", ErrArg
 	}
-	v, ok := a.Value[key]
+	v, ok := a.Query[key]
 	if !ok || len(v) == 0 {
 		return "", ErrArg
 	}

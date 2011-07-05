@@ -27,7 +27,7 @@ type queryCodec struct {
 	seq uint64
 }
 
-var ErrCodec = os.NewError("api codec")
+var ErrCodec = os.NewError("http/rpc codec")
 
 // rpc.Server calls ReadRequestHeader and ReadRequestBody in a 
 // synchronous sequence. If ReadRequestHeader returns an error,
@@ -39,9 +39,6 @@ var ErrCodec = os.NewError("api codec")
 func (qx *queryCodec) ReadRequestHeader(req *rpc.Request) os.Error {
 	if qx.seq == 0 {
 		return os.EOF
-	}
-	if qx.Query.Req.Body != nil {
-		qx.Query.Req.Body.Close() // Discard HTTP body. Only GET requests supported currently.
 	}
 	req.Seq = qx.seq
 	req.ServiceMethod = pathToServiceMethod(qx.Req.URL.Path)
@@ -62,16 +59,34 @@ func (qx *queryCodec) ReadRequestBody(args interface{}) (err os.Error) {
 		qx.seq = 0
 	}()
 	if args == nil {
+		if qx.Query.Req.Body != nil {
+			qx.Query.Req.Body.Close()
+		}
 		return nil
 	}
 
 	a := args.(*Args)
 
-	a.Value, err = http.ParseQuery(qx.Query.Req.URL.RawQuery)
+	// Save request method (GET, POST, PUT, UPDATE, etc.)
+	a.Method = qx.Query.Req.Method
+
+	// Decode URL arguments
+	a.Query, err = http.ParseQuery(qx.Query.Req.URL.RawQuery)
 	if err != nil {
 		return err
 	}
 
+	// Decode JSON body
+	a.Body = make(map[string]interface{})
+	if qx.Query.Req.Body != nil {
+		dec := json.NewDecoder(qx.Query.Req.Body)
+		// We don't care if the decode is successful.
+		// The user will do their own complaining if they are missing expected arguments.
+		dec.Decode(a.Body)
+		qx.Query.Req.Body.Close()
+	}
+
+	// Read the cookies associated with the request
 	a.Cookies = qx.Query.Req.Cookies()
 
 	return nil
