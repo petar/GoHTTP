@@ -200,52 +200,33 @@ func (srv *Server) AddExt(name, url string, ext Extension) {
 	srv.exts = append(srv.exts, &extcfg{name, url, ext})
 }
 
-func (srv *Server) subIter() chan *subcfg {
+func (srv *Server) copySub() []*subcfg {
 	srv.Lock()
 	defer srv.Unlock()
 
 	ss := make([]*subcfg, len(srv.subs))
 	copy(ss, srv.subs)
-	ch := make(chan *subcfg)
-	go func() {
-		for _, s := range ss {
-			ch <- s
-		}
-		close(ch)
-	}()
-	return ch
+	return ss
 }
 
-func (srv *Server) extIter() chan *extcfg {
+func (srv *Server) copyExt() []*extcfg {
 	srv.Lock()
 	defer srv.Unlock()
 
 	ee := make([]*extcfg, len(srv.exts))
 	copy(ee, srv.exts)
-	ch := make(chan *extcfg)
-	go func() {
-		for _, e := range ee {
-			ch <- e
-		}
-		close(ch)
-	}()
-	return ch
+	return ee
 }
 
-func (srv *Server) extRevIter() chan *extcfg {
+func (srv *Server) copyExtRev() []*extcfg {
 	srv.Lock()
 	defer srv.Unlock()
 
 	ee := make([]*extcfg, len(srv.exts))
-	copy(ee, srv.exts)
-	ch := make(chan *extcfg)
-	go func() {
-		for i := 0; i < len(ee); i++ {
-			ch <- ee[len(ee)-i-1]
-		}
-		close(ch)
-	}()
-	return ch
+	for i := 0; i < len(ee); i++ {
+		ee[len(ee)-i-1] = srv.exts[i]
+	}
+	return ee
 }
 
 func (srv *Server) process(q *Query) *Query {
@@ -253,8 +234,8 @@ func (srv *Server) process(q *Query) *Query {
 	// Apply extensions
 	p := q.origPath
 	q.Ext = make(map[string]interface{})
-	extch := srv.extIter()
-	for ec, ok := <-extch; ok; ec, ok = <-extch {
+	exts := srv.copyExt()
+	for _, ec := range exts {
 		if strings.HasPrefix(p, ec.SubURL) {
 			if err := ec.Ext.ReadRequest(q.Req, q.Ext); err != nil {
 				return nil
@@ -264,8 +245,8 @@ func (srv *Server) process(q *Query) *Query {
 
 	// Serve using a sub?
 	p = q.Req.URL.Path
-	subch := srv.subIter()
-	for sc, ok := <-subch; ok; sc, ok = <-subch {
+	subs := srv.copySub()
+	for _, sc := range subs {
 		if strings.HasPrefix(p, sc.SubURL) {
 			q.Req.URL.Path = p[len(sc.SubURL):]
 			sc.Sub.Serve(q)

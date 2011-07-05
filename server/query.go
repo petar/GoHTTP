@@ -85,8 +85,8 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 	// Invoke extensions in reverse order
 
 	p := q.origPath
-	extch := q.srv.extRevIter()
-	for ec, ok := <-extch; ok; ec, ok = <-extch {
+	revexts := q.srv.copyExtRev()
+	for _, ec := range revexts {
 		if strings.HasPrefix(p, ec.SubURL) {
 			if err := ec.Ext.WriteResponse(resp, ext); err != nil {
 				q.srv.bury(q.ssc)
