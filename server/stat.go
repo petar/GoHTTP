@@ -53,7 +53,7 @@ func (s *Stats) IncAcceptConn() {
 func (s *Stats) SummaryLine() string {
 	s.lk.Lock()
 	defer s.lk.Unlock()
-	return fmt.Sprintf("Running %d mins, %d accept, %d expire, %d req, %d resp; %d goroutine\n",
+	return fmt.Sprintf("Running %d mins, %d accept, %d expire, %d req, %d resp; %d goroutine",
 		(time.Nanoseconds()-s.TimeStarted)/(60*1e9),
 		s.AcceptConnCount, s.ExpireConnCount, s.RequestCount, s.ResponseCount,
 		runtime.Goroutines())
