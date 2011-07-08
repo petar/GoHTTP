@@ -59,12 +59,12 @@ func (a *Args) QueryString(key string) (string, os.Error) {
 // Ret is the return valyes structure of RPC calls
 type Ret struct {
 	SetCookies []*http.Cookie
-	Value      map[string][]string
+	Value      map[string]interface{}
 }
 
 func (r *Ret) initIfZero() {
 	if r.Value == nil {
-		r.Value = make(map[string][]string)
+		r.Value = make(map[string]interface{})
 	}
 }
 
@@ -74,12 +74,12 @@ func (r *Ret) SetBool(key string, value bool) {
 	if value {
 		s = "1"
 	}
-	r.Value[key] = []string{s}
+	r.Value[key] = s
 }
 
 func (r *Ret) SetString(key string, value string) {
 	r.initIfZero()
-	r.Value[key] = []string{value}
+	r.Value[key] = value
 }
 
 func (r *Ret) AddSetCookie(setCookie *http.Cookie) {
