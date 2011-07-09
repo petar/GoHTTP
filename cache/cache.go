@@ -6,6 +6,8 @@ package cache
 
 import (
 	"os"
+	"mime"
+	"path"
 	"sync"
 )
 
@@ -20,7 +22,7 @@ func NewCache() *Cache {
 	}
 }
 
-func (c *Cache) Get(filename string) ([]byte, os.Error) {
+func (c *Cache) Get(filename string) (content []byte, mimetype string, err os.Error) {
 	c.Lock()
 	f, ok := c.files[filename]
 	if !ok {
@@ -28,5 +30,9 @@ func (c *Cache) Get(filename string) ([]byte, os.Error) {
 		c.files[filename] = f
 	}
 	c.Unlock()
-	return f.Get()
+	content, err = f.Get()
+	if err == nil {
+		mimetype = mime.TypeByExtension(path.Ext(filename))
+	}
+	return content, mimetype, err
 }

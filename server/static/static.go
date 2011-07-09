@@ -37,11 +37,17 @@ func (ss *StaticSub) Serve(q *server.Query) {
 		p = p[1:]
 	}
 	full := path.Clean(path.Join(ss.staticPath, p))
-	buf, err := ss.cache.Get(full)
+	buf, mimetype, err := ss.cache.Get(full)
 	if err != nil {
 		q.ContinueAndWrite(http.NewResponse404(req))
 		return
 	}
 	resp := http.NewResponseWithBytes(req, buf)
+	if mimetype != "" {
+		if resp.Header == nil {
+			resp.Header = make(http.Header)
+		}
+		resp.Header.Set("Content-Type", mimetype)
+	}
 	q.ContinueAndWrite(resp)
 }
