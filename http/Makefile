@@ -15,6 +15,7 @@ GOFILES=\
 	request.go\
 	response.go\
 	server.go\
+	sniff.go\
 	status.go\
 	transfer.go\
 	transport.go\
