@@ -77,6 +77,11 @@ func (r *Ret) SetBool(key string, value bool) {
 	r.Value[key] = s
 }
 
+func (r *Ret) SetInt(key string, value int) {
+	r.initIfZero()
+	r.Value[key] = value
+}
+
 func (r *Ret) SetString(key string, value string) {
 	r.initIfZero()
 	r.Value[key] = value
