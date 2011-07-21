@@ -255,7 +255,9 @@ func (w *response) WriteHeader(code int) {
 	} else {
 		// If no content type, apply sniffing algorithm to body.
 		if w.header.Get("Content-Type") == "" {
-			w.needSniff = true
+			// NOTE(dsymonds): the sniffing mechanism in this file is currently broken.
+			//w.needSniff = true
+			w.header.Set("Content-Type", "text/html; charset=utf-8")
 		}
 	}
 
@@ -359,10 +361,7 @@ func (w *response) sniff() {
 	w.needSniff = false
 
 	data := w.conn.body
-	ctype := detectContentType(data)
-	if ctype != "" {
-		fmt.Fprintf(w.conn.buf, "Content-Type: %s\r\n", ctype)
-	}
+	fmt.Fprintf(w.conn.buf, "Content-Type: %s\r\n", DetectContentType(data))
 	io.WriteString(w.conn.buf, "\r\n")
 
 	if w.chunking && len(data) > 0 {
