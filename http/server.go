@@ -255,9 +255,7 @@ func (w *response) WriteHeader(code int) {
 	} else {
 		// If no content type, apply sniffing algorithm to body.
 		if w.header.Get("Content-Type") == "" {
-			// NOTE(dsymonds): the sniffing mechanism in this file is currently broken.
-			//w.needSniff = true
-			w.header.Set("Content-Type", "text/html; charset=utf-8")
+			w.needSniff = true
 		}
 	}
 
@@ -361,13 +359,18 @@ func (w *response) sniff() {
 	w.needSniff = false
 
 	data := w.conn.body
-	fmt.Fprintf(w.conn.buf, "Content-Type: %s\r\n", DetectContentType(data))
-	io.WriteString(w.conn.buf, "\r\n")
+	fmt.Fprintf(w.conn.buf, "Content-Type: %s\r\n\r\n", DetectContentType(data))
 
-	if w.chunking && len(data) > 0 {
+	if len(data) == 0 {
+		return
+	}
+	if w.chunking {
 		fmt.Fprintf(w.conn.buf, "%x\r\n", len(data))
 	}
-	w.conn.buf.Write(data)
+	_, err := w.conn.buf.Write(data)
+	if w.chunking && err == nil {
+		io.WriteString(w.conn.buf, "\r\n")
+	}
 }
 
 // bodyAllowed returns true if a Write is allowed for this response type.
@@ -401,14 +404,28 @@ func (w *response) Write(data []byte) (n int, err os.Error) {
 
 	var m int
 	if w.needSniff {
-		body := w.conn.body
-		m = copy(body[len(body):], data)
-		w.conn.body = body[:len(body)+m]
-		if m == len(data) {
+		// We need to sniff the beginning of the output to
+		// determine the content type.  Accumulate the
+		// initial writes in w.conn.body.
+		// Cap m so that append won't allocate.
+		m := cap(w.conn.body) - len(w.conn.body)
+		if m > len(data) {
+			m = len(data)
+		}
+		w.conn.body = append(w.conn.body, data[:m]...)
+		data = data[m:]
+		if len(data) == 0 {
+			// Copied everything into the buffer.
+			// Wait for next write.
 			return m, nil
 		}
+
+		// Filled the buffer; more data remains.
+		// Sniff the content (flushes the buffer)
+		// and then proceed with the remainder
+		// of the data as a normal Write.
+		// Calling sniff clears needSniff.
 		w.sniff()
-		data = data[m:]
 	}
 
 	// TODO(rsc): if chunking happened after the buffering,
