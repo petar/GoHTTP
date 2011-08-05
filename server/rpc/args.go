@@ -87,6 +87,11 @@ func (r *Ret) SetString(key string, value string) {
 	r.Value[key] = value
 }
 
+func (r *Ret) SetInterface(key string, value interface{}) {
+	r.initIfZero()
+	r.Value[key] = value
+}
+
 func (r *Ret) AddSetCookie(setCookie *http.Cookie) {
 	r.initIfZero()
 	r.SetCookies = append(r.SetCookies, setCookie)
