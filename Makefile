@@ -26,7 +26,6 @@ DIRS=\
 	server\
 	server/static\
 	server/rpc\
-	template\
 
 TEST=\
 	$(filter-out $(NOTEST),$(DIRS))
