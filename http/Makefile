@@ -19,7 +19,6 @@ GOFILES=\
 	status.go\
 	transfer.go\
 	transport.go\
-	url.go\
 	petar-util.go\
 	petar-boiler.go\
 	cookie.go\
