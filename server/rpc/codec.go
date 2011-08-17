@@ -10,6 +10,7 @@ import (
 	"path"
 	"rpc"
 	"strings"
+	"url"
 	"github.com/petar/GoHTTP/http"
 	"github.com/petar/GoHTTP/server"
 )
@@ -71,7 +72,7 @@ func (qx *queryCodec) ReadRequestBody(args interface{}) (err os.Error) {
 	a.Method = qx.Query.Req.Method
 
 	// Decode URL arguments
-	a.Query, err = http.ParseQuery(qx.Query.Req.URL.RawQuery)
+	a.Query, err = url.ParseQuery(qx.Query.Req.URL.RawQuery)
 	if err != nil {
 		return err
 	}
