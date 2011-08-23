@@ -13,6 +13,7 @@ func NewResponse200(req *Request) *Response {
 		ProtoMinor:    1,
 		Request:       req,
 		Close:         false,
+		ContentLength: 0,
 	}
 }
 

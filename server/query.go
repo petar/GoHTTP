@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 	"github.com/petar/GoHTTP/http"
 )
 
@@ -26,6 +27,8 @@ type Query struct {
 	err      os.Error
 	fwd      bool // If true, the user has already called either Continue() or Hijack()
 	hijacked bool
+
+	t0       int64 // Time request was received
 }
 
 func newQueryErr(err os.Error) *Query { return &Query{err: err} }
@@ -105,6 +108,7 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 		q.srv = nil
 		return
 	}
+	q.srv.stats.AddReqRespTime(time.Nanoseconds() - q.t0)
 	q.srv.stats.IncResponse()
 	return
 }

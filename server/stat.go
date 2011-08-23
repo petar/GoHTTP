@@ -19,11 +19,20 @@ type Stats struct {
 	ResponseCount   uint64 // Number of responses successfully received
 	ExpireConnCount uint64 // Number of connections, expired by the server
 	AcceptConnCount uint64
+	MaxReqRespTime  uint64 // Duration of longest request-response cycle
 	lk              sync.Mutex
 }
 
 func (s *Stats) Init() {
 	s.TimeStarted = time.Nanoseconds()
+}
+
+func (s *Stats) AddReqRespTime(d int64) {
+	s.lk.Lock()
+	defer s.lk.Unlock()
+	if uint64(d) > s.MaxReqRespTime {
+		s.MaxReqRespTime = uint64(d)
+	}
 }
 
 func (s *Stats) IncRequest() {
@@ -53,8 +62,9 @@ func (s *Stats) IncAcceptConn() {
 func (s *Stats) SummaryLine() string {
 	s.lk.Lock()
 	defer s.lk.Unlock()
-	return fmt.Sprintf("Running %d mins, %d accept, %d expire, %d req, %d resp; %d goroutine",
+	return fmt.Sprintf("Running %d mins, %d accept, %d expire, %d req, %d resp; MaxReqRespTime: %dms; %d goroutine",
 		(time.Nanoseconds()-s.TimeStarted)/(60*1e9),
 		s.AcceptConnCount, s.ExpireConnCount, s.RequestCount, s.ResponseCount,
+		s.MaxReqRespTime/1e6,
 		runtime.Goroutines())
 }

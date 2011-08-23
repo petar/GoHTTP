@@ -284,6 +284,7 @@ func (srv *Server) read(ssc *StampedServerConn) {
 			srv:      srv,
 			ssc:      ssc,
 			origPath: req.URL.Path,
+			t0:       time.Nanoseconds(),
 		}
 		srv.stats.IncRequest()
 		return

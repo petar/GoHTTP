@@ -5,6 +5,7 @@
 package rpc
 
 import (
+	//"log"
 	"json"
 	"os"
 	"path"
@@ -119,6 +120,9 @@ func (qx *queryCodec) WriteResponse(resp *rpc.Response, ret interface{}) (err os
 	for _, setCookie := range r.SetCookies {
 		httpResp.Header.Add("Set-Cookie", setCookie.String())
 	}
+
+	//dump, _ := http.DumpResponse(httpResp, true)
+	//log.Printf("RPC-Resp:\n%s\n", string(dump))
 
 	return qx.Query.Write(httpResp)
 }
