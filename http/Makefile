@@ -9,6 +9,7 @@ GOFILES=\
 	chunked.go\
 	client.go\
 	dump.go\
+	filetransport.go\
 	fs.go\
 	lex.go\
 	persist.go\
