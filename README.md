@@ -1,18 +1,13 @@
 ## Description
 
-GoHTTP is a growing web server infrastructure for Go. It includes
-things like serving static pages, writing REST APIs and more.
-(See the section on features below.)
+GoHTTP is an early draft, more like a sketch, of a high-performance Go
+HTTP server framework. It uses the low-level _"net/http/httputil"_ standard
+package, which provides access to advanced features like pipelining, and is
+not yet utilized within the standard Go _"net/http"_ infrastructure.
 
-GoHTTP uses its own bleeding edge version of Google Go's HTTP package. 
-Differences between GoHTTP's version of the HTTP package are eventually 
-submitted to the main Google Go library.
-
-The packages in this project are used "in production" on a few
-sites that I run, like e.g. 
-
-* [Population algorithms](http://popalg.org)
-* [The Tonika, aka 5ttt.org, blog](http://blog.5ttt.org)
+The main point of interest is that decent HTTP proxies must suppport such
+features, and therefore this draft I am current reviving seems like the only
+route to implementing a workable web HTTP proxy in Go.
 
 ## Features
 
@@ -23,18 +18,6 @@ sites that I run, like e.g.
 * A system of "extensions" which allows modular pre- and post-processing of HTTP header objects like cookies
 * A sub-server module for serving static files with basic in-memory file caching
 
-## Installation
-
-GoHTTP entails multiple packages. With a working installation of Go, 
-they can be installed like so
-
-	goinstall github.com/petar/GoHTTP/http
-	goinstall github.com/petar/GoHTTP/cache
-	goinstall github.com/petar/GoHTTP/util
-	goinstall github.com/petar/GoHTTP/template
-	goinstall github.com/petar/GoHTTP/server
-		and so on ... 
-
 ## About
 
-GoHTTP is maintained by [Petar Maymounkov](http://pdos.csail.mit.edu/~petar/). 
+GoHTTP is maintained by [Petar Maymounkov](http://maymounkov.org/). 
