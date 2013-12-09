@@ -23,7 +23,7 @@ func NewCachedFile(filename string) *CachedFile {
 	return &CachedFile{fname: filename}
 }
 
-func (c *CachedFile) Get() (data []byte, err os.Error) {
+func (c *CachedFile) Get() (data []byte, err error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -34,13 +34,13 @@ func (c *CachedFile) Get() (data []byte, err os.Error) {
 	if err != nil {
 		return nil, err
 	}
-	if fi.Mtime_ns > c.mtime {
+	if fi.ModTime().UnixNano() > c.mtime {
 		return c.readFile()
 	}
 	return c.data, nil
 }
 
-func (c *CachedFile) readFile() (data []byte, err os.Error) {
+func (c *CachedFile) readFile() (data []byte, err error) {
 	fi, err := os.Stat(c.fname)
 	if err != nil {
 		return nil, err
@@ -50,7 +50,7 @@ func (c *CachedFile) readFile() (data []byte, err os.Error) {
 		return nil, err
 	}
 	c.data = data
-	c.mtime = fi.Mtime_ns
+	c.mtime = fi.ModTime().UnixNano()
 
 	return data, nil
 }

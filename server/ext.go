@@ -5,16 +5,15 @@
 package server
 
 import (
-	"os"
-	"github.com/petar/GoHTTP/http"
+	"net/http"
 )
 
 // An Extension is a module of server-side logic that can attach
 // itself to the header processing chains for incoming requests
 // and outgoing respones.
 type Extension interface {
-	ReadRequest(req *http.Request, ext map[string]interface{}) os.Error
-	WriteResponse(resp *http.Response, ext map[string]interface{}) os.Error
+	ReadRequest(req *http.Request, ext map[string]interface{}) error
+	WriteResponse(resp *http.Response, ext map[string]interface{}) error
 }
 
 type extcfg struct {

@@ -7,7 +7,6 @@ package util
 import (
 	"io"
 	"net"
-	"os"
 )
 
 // runOnCloseReader wraps an io.ReadCloser, and executes a user-provided
@@ -21,7 +20,7 @@ func NewRunOnCloseReader(c io.ReadCloser, f func()) *runOnCloseReader {
 	return &runOnCloseReader{c, f}
 }
 
-func (t *runOnCloseReader) Close() os.Error {
+func (t *runOnCloseReader) Close() error {
 	err := t.ReadCloser.Close()
 	if t.run != nil {
 		t.run()
@@ -42,7 +41,7 @@ func NewRunOnCloseConn(c net.Conn, f func()) *runOnCloseConn {
 }
 
 // XXX: make re-entrant
-func (t *runOnCloseConn) Close() os.Error {
+func (t *runOnCloseConn) Close() error {
 	err := t.Conn.Close()
 	if t.run != nil {
 		t.run()

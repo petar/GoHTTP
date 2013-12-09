@@ -6,7 +6,7 @@ package static
 
 import (
 	"path"
-	"github.com/petar/GoHTTP/http"
+	http "net/http/httputil"
 	"github.com/petar/GoHTTP/cache"
 	"github.com/petar/GoHTTP/server"
 )

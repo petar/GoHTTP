@@ -7,10 +7,10 @@ package server
 import (
 	"io"
 	"log"
-	"os"
 	"strings"
 	"time"
-	"github.com/petar/GoHTTP/http"
+	"net/http"
+	"net/http/httputil"
 )
 
 // Incoming requests are presented to the user as a Query object.
@@ -24,16 +24,16 @@ type Query struct {
 	origPath string
 	srv      *Server
 	ssc      *StampedServerConn
-	err      os.Error
+	err      error
 	fwd      bool // If true, the user has already called either Continue() or Hijack()
 	hijacked bool
 
 	t0       int64 // Time request was received
 }
 
-func newQueryErr(err os.Error) *Query { return &Query{err: err} }
+func newQueryErr(err error) *Query { return &Query{err: err} }
 
-func (q *Query) getError() os.Error { return q.err }
+func (q *Query) getError() error { return q.err }
 
 // Continue() indicates to the Server that it can continue
 // listening for incoming requests on the ServerConn that
@@ -56,7 +56,7 @@ func (q *Query) Continue() {
 // and the user becomes responsible for it.
 // For every query returned by Server.Read(), the user must
 // call either Continue() or Hijack(), but not both, and only once.
-func (q *Query) Hijack() *http.ServerConn {
+func (q *Query) Hijack() *httputil.ServerConn {
 	if q.fwd {
 		panic("continue and hijack")
 	}
@@ -73,7 +73,7 @@ func (q *Query) Hijack() *http.ServerConn {
 // Write sends resp back on the connection that produced the request.
 // Any non-nil error returned pertains to the ServerConn and not
 // to the Server as a whole.
-func (q *Query) Write(resp *http.Response) (err os.Error) {
+func (q *Query) Write(resp *http.Response) (err error) {
 	if resp.Body != nil {
 		defer func(b io.ReadCloser) { 
 			b.Close() 
@@ -95,7 +95,7 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 				q.srv.bury(q.ssc)
 				q.ssc = nil
 				q.srv = nil
-				return
+				return err
 			}
 		}
 	}
@@ -108,12 +108,12 @@ func (q *Query) Write(resp *http.Response) (err os.Error) {
 		q.srv = nil
 		return
 	}
-	q.srv.stats.AddReqRespTime(time.Nanoseconds() - q.t0)
+	q.srv.stats.AddReqRespTime(time.Now().UnixNano() - q.t0)
 	q.srv.stats.IncResponse()
 	return
 }
 
-func (q *Query) ContinueAndWrite(resp *http.Response) (err os.Error) {
+func (q *Query) ContinueAndWrite(resp *http.Response) (err error) {
 	q.Continue()
 	return q.Write(resp)
 }

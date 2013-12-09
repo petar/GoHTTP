@@ -7,16 +7,16 @@ package server
 import (
 	"bufio"
 	"net"
-	"os"
 	"sync"
 	"time"
-	"github.com/petar/GoHTTP/http"
+	"net/http"
+	"net/http/httputil"
 )
 
-// StampedServerConn is an http.ServerConn which additionally
+// StampedServerConn is an httputil.ServerConn which additionally
 // keeps track of the last time the connection performed I/O.
 type StampedServerConn struct {
-	*http.ServerConn
+	*httputil.ServerConn
 	stamp int64
 	lk    sync.Mutex
 }
@@ -40,22 +40,22 @@ func (ssc *StampedServerConn) GetStamp() int64 {
 	return ssc.stamp
 }
 
-func (ssc *StampedServerConn) Read() (req *http.Request, err os.Error) {
+func (ssc *StampedServerConn) Read() (req *http.Request, err error) {
 	ssc.touch()
 	defer ssc.touch()
 	return ssc.ServerConn.Read()
 }
 
-func (ssc *StampedServerConn) Write(req *http.Request, resp *http.Response) (err os.Error) {
+func (ssc *StampedServerConn) Write(req *http.Request, resp *http.Response) (err error) {
 	ssc.touch()
 	defer ssc.touch()
 	return ssc.ServerConn.Write(req, resp)
 }
 
-// StampedClientConn is an http.ClientConn which additionally
+// StampedClientConn is an httputil.ClientConn which additionally
 // keeps track of the last time the connection performed I/O.
 type StampedClientConn struct {
-	*http.ClientConn
+	*httputil.ClientConn
 	stamp int64
 	lk    sync.Mutex
 }
@@ -79,13 +79,13 @@ func (scc *StampedClientConn) GetStamp() int64 {
 	return scc.stamp
 }
 
-func (scc *StampedClientConn) Read(req *http.Request) (resp *http.Response, err os.Error) {
+func (scc *StampedClientConn) Read(req *http.Request) (resp *http.Response, err error) {
 	scc.touch()
 	defer scc.touch()
 	return scc.ClientConn.Read(req)
 }
 
-func (scc *StampedClientConn) Write(req *http.Request) (err os.Error) {
+func (scc *StampedClientConn) Write(req *http.Request) (err error) {
 	scc.touch()
 	defer scc.touch()
 	return scc.ClientConn.Write(req)

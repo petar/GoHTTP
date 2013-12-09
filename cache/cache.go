@@ -5,7 +5,6 @@
 package cache
 
 import (
-	"os"
 	"mime"
 	"path"
 	"sync"
@@ -22,7 +21,7 @@ func NewCache() *Cache {
 	}
 }
 
-func (c *Cache) Get(filename string) (content []byte, mimetype string, err os.Error) {
+func (c *Cache) Get(filename string) (content []byte, mimetype string, err error) {
 	c.Lock()
 	f, ok := c.files[filename]
 	if !ok {

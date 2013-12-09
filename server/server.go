@@ -13,7 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/petar/GoHTTP/http"
+	"net/http"
 	"github.com/petar/GoHTTP/util"
 )
 
@@ -59,7 +59,7 @@ func NewServer(l net.Listener, config Config, fdlim int) *Server {
 	return srv
 }
 
-func NewServerEasy(addr string) (*Server, os.Error) {
+func NewServerEasy(addr string) (*Server, error) {
 	l, err := net.Listen("tcp", addr)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (srv *Server) expireLoop() {
 			srv.Unlock()
 			return
 		}
-		now := time.Nanoseconds()
+		now := time.Now().UnixNano()
 		kills := list.New()
 		for ssc, _ := range srv.conns {
 			if now-ssc.GetStamp() >= srv.config.Timeout {
@@ -93,7 +93,7 @@ func (srv *Server) expireLoop() {
 		}
 		kills.Init()
 		kills = nil
-		time.Sleep(srv.config.Timeout)
+		time.Sleep(time.Duration(srv.config.Timeout))
 		if i%4 == 0 {
 			log.Println(srv.stats.SummaryLine())
 		}
@@ -148,7 +148,7 @@ func (srv *Server) acceptLoop() {
 // indicates that the Server cannot accept new connections,
 // and the user us expected to call Shutdown(), perhaps after serving
 // outstanding queries.
-func (srv *Server) Read() (query *Query, err os.Error) {
+func (srv *Server) Read() (query *Query, err error) {
 	// TODO: This loop processes requests in sequence. And does not process a new one
 	// until the old one has processed in process(). Need to parallelize this.
 	for {
@@ -314,7 +314,7 @@ func (srv *Server) bury(ssc *StampedServerConn) {
 // Shutdown closes the Server by closing the underlying
 // net.Listener object. The user should not use any Server
 // or Query methods after a call to Shutdown.
-func (srv *Server) Shutdown() (err os.Error) {
+func (srv *Server) Shutdown() (err error) {
 	// First, close the listener
 	srv.Lock()
 	var l net.Listener

@@ -5,10 +5,12 @@
 package util
 
 import (
-	"os"
+	"errors"
 	"sync"
 	"time"
 )
+
+var ErrTimeout = errors.New("timeout")
 
 // FDLimiter helps keep track of the number of file descriptors in use.
 type FDLimiter struct {
@@ -70,9 +72,9 @@ func (fdl *FDLimiter) Lock() {
 	panic("FDLimiter, unreachable")
 }
 
-// LockOrTimeout proceeds as Lock, except that it returns an os.EAGAIN
+// LockOrTimeout proceeds as Lock, except that it returns an ErrTimeout
 // error, if a lock cannot be obtained within ns nanoseconds.
-func (fdl *FDLimiter) LockOrTimeout(ns int64) os.Error {
+func (fdl *FDLimiter) LockOrTimeout(ns int64) error {
 	waitsofar := int64(0)
 	for {
 		// Try to get an fd
@@ -87,20 +89,20 @@ func (fdl *FDLimiter) LockOrTimeout(ns int64) os.Error {
 
 		// Or, wait for an fd or timeout
 		if waitsofar >= ns {
-			return os.EAGAIN
+			return ErrTimeout
 		}
-		t0 := time.Nanoseconds()
+		t0 := time.Now().UnixNano()
 		alrm := alarmOnce(ns - waitsofar)
 		select {
 		case <-alrm:
 		case <-fdl.ch:
 		}
-		waitsofar += time.Nanoseconds() - t0
+		waitsofar += time.Now().UnixNano() - t0
 	}
 	panic("FDLimiter, unreachable")
 }
 
-func (fdl *FDLimiter) LockOrChan(ch <-chan interface{}) (msg interface{}, err os.Error) {
+func (fdl *FDLimiter) LockOrChan(ch <-chan interface{}) (msg interface{}, err error) {
 	for {
 		fdl.lk.Lock()
 		if fdl.count < fdl.limit {
@@ -113,7 +115,7 @@ func (fdl *FDLimiter) LockOrChan(ch <-chan interface{}) (msg interface{}, err os
 
 		select {
 		case msg = <-ch:
-			return msg, os.EAGAIN
+			return msg, ErrTimeout
 		case <-fdl.ch:
 		}
 	}
@@ -138,7 +140,7 @@ func (fdl *FDLimiter) Unlock() {
 func alarmOnce(ns int64) <-chan int {
 	backchan := make(chan int)
 	go func() {
-		time.Sleep(ns)
+		time.Sleep(time.Duration(ns))
 		backchan <- 1
 		close(backchan)
 	}()
